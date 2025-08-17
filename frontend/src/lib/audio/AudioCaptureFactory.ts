@@ -104,15 +104,20 @@ export class AudioCaptureFactory implements IAudioCaptureFactory {
     }
 
     try {
-      // Request device access to get device labels
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
-      
-      // Cache the results
-      this.availableDevicesCache = audioInputDevices;
-      this.cacheExpiry = Date.now() + this.CACHE_DURATION;
-      
-      return audioInputDevices;
+      if (typeof navigator !== 'undefined' && (navigator as any).mediaDevices) {
+        // Request device access to get device labels
+        const devices = await (navigator as any).mediaDevices.enumerateDevices();
+        const audioInputDevices = devices.filter((device: any) => device.kind === 'audioinput');
+        
+        // Cache the results
+        this.availableDevicesCache = audioInputDevices;
+        this.cacheExpiry = Date.now() + this.CACHE_DURATION;
+        
+        return audioInputDevices;
+      } else {
+        console.warn('MediaDevices API not available');
+        return [];
+      }
       
     } catch (error) {
       console.warn('Failed to enumerate audio devices:', error);
@@ -201,11 +206,11 @@ export class AudioCaptureFactory implements IAudioCaptureFactory {
           state: permission.state,
           canRequest: permission.state !== 'denied'
         };
-      } else {
+      } else if (typeof navigator !== 'undefined' && (navigator as any).mediaDevices) {
         // Fallback: try to access microphone to check permissions
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          stream.getTracks().forEach(track => track.stop());
+          const stream = await (navigator as any).mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach((track: any) => track.stop());
           return {
             granted: true,
             state: 'granted',
@@ -218,6 +223,13 @@ export class AudioCaptureFactory implements IAudioCaptureFactory {
             canRequest: true
           };
         }
+      } else {
+        // No media API available
+        return {
+          granted: false,
+          state: 'unknown',
+          canRequest: false
+        };
       }
     } catch (error) {
       console.warn('Failed to check microphone permissions:', error);
@@ -234,9 +246,14 @@ export class AudioCaptureFactory implements IAudioCaptureFactory {
    */
   async requestMicrophonePermissions(): Promise<boolean> {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(track => track.stop());
-      return true;
+      if (typeof navigator !== 'undefined' && (navigator as any).mediaDevices) {
+        const stream = await (navigator as any).mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((track: any) => track.stop());
+        return true;
+      } else {
+        console.warn('MediaDevices API not available');
+        return false;
+      }
     } catch (error) {
       console.warn('Microphone permission denied or failed:', error);
       return false;

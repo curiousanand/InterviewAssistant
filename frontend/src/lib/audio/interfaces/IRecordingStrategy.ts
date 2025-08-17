@@ -1,4 +1,4 @@
-import { IAudioCapture, AudioCaptureConfiguration } from './IAudioCapture';
+import { IAudioCapture } from './IAudioCapture';
 
 /**
  * Recording strategy interface for different recording behaviors

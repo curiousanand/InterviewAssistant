@@ -7,6 +7,7 @@ import com.interview.assistant.presentation.websocket.model.WebSocketMessage;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
+import java.nio.ByteBuffer;
 
 /**
  * Main WebSocket handler for streaming audio and real-time communication
@@ -50,10 +51,62 @@ public class StreamingWebSocketHandler implements WebSocketHandler {
     
     @Override
     public void handleMessage(WebSocketSession session, org.springframework.web.socket.WebSocketMessage<?> message) throws Exception {
-        // Parse message into our domain model
-        // This is simplified - in production you'd have proper JSON parsing
-        return;
+        try {
+            if (message instanceof TextMessage) {
+                // Handle JSON text messages
+                String payload = ((TextMessage) message).getPayload();
+                System.out.println("Received text message: " + payload);
+                
+                // For demo purposes, simulate a transcription response
+                sendMockTranscription(session, payload);
+                
+            } else if (message instanceof BinaryMessage) {
+                // Handle audio binary messages
+                byte[] audioData = ((BinaryMessage) message).getPayload().array();
+                System.out.println("Received audio data: " + audioData.length + " bytes");
+                
+                // For demo purposes, simulate transcription of audio
+                sendMockTranscription(session, "You said something (simulated transcription)");
+            }
+        } catch (Exception e) {
+            System.err.println("Error handling message: " + e.getMessage());
+            sendErrorMessage(session, "Error processing message: " + e.getMessage());
+        }
     }
+    
+    private void sendMockTranscription(WebSocketSession session, String input) throws Exception {
+        // Escape JSON strings properly
+        String safeInput = escapeJson(input);
+        String sessionId = session.getId();
+        
+        // Send partial transcript
+        String partialResponse = "{\"type\":\"transcript.partial\",\"sessionId\":\"" + sessionId + "\",\"payload\":{\"text\":\"" + safeInput + "\",\"confidence\":0.95}}";
+        session.sendMessage(new TextMessage(partialResponse));
+        
+        // Send final transcript after a short delay
+        Thread.sleep(500);
+        String finalResponse = "{\"type\":\"transcript.final\",\"sessionId\":\"" + sessionId + "\",\"payload\":{\"text\":\"" + safeInput + "\",\"confidence\":0.98}}";
+        session.sendMessage(new TextMessage(finalResponse));
+        
+        // Send mock AI response
+        String aiResponse = "{\"type\":\"assistant.delta\",\"sessionId\":\"" + sessionId + "\",\"payload\":{\"text\":\"This is a mock AI response to: " + safeInput + "\"}}";
+        session.sendMessage(new TextMessage(aiResponse));
+        
+        // Send completion signal
+        Thread.sleep(500);
+        String completeResponse = "{\"type\":\"assistant.done\",\"sessionId\":\"" + sessionId + "\",\"payload\":{\"text\":\"\"}}";
+        session.sendMessage(new TextMessage(completeResponse));
+    }
+    
+    private String escapeJson(String input) {
+        if (input == null) return "";
+        return input.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n")
+                   .replace("\r", "\\r")
+                   .replace("\t", "\\t");
+    }
+    
     
     public void handleMessage(WebSocketSession session, WebSocketMessage message) throws Exception {
         // Update session activity

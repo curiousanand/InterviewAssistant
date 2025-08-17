@@ -1,5 +1,6 @@
 package com.interview.assistant.config;
 
+import com.interview.assistant.presentation.websocket.StreamingWebSocketHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -15,13 +16,17 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @Profile("!test")
 public class WebSocketConfig implements WebSocketConfigurer {
     
+    private final StreamingWebSocketHandler streamingHandler;
+    
+    public WebSocketConfig(StreamingWebSocketHandler streamingHandler) {
+        this.streamingHandler = streamingHandler;
+    }
+    
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        // TODO: Implement WebSocket handler when moving problematic classes back
-        // registry.addHandler(new StreamingWebSocketHandler(), "/ws/stream")
-        //         .setAllowedOrigins("*"); // Configure CORS as needed
+        registry.addHandler(streamingHandler, "/ws/stream")
+                .setAllowedOrigins("*"); // Allow frontend connections
         
-        // For now, just register the endpoint path for documentation
         System.out.println("WebSocket endpoint will be available at: /ws/stream");
     }
 }

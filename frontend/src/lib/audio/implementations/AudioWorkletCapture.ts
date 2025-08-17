@@ -472,7 +472,10 @@ export class AudioWorkletCapture implements IAudioCapture {
       const float32Data = new Float32Array(int16Data.length);
       
       for (let i = 0; i < int16Data.length; i++) {
-        float32Data[i] = int16Data[i] / 32767;
+        const sample = int16Data[i];
+        if (sample !== undefined) {
+          float32Data[i] = sample / 32767;
+        }
       }
 
       this.frameCount++;

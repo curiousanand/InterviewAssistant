@@ -20,7 +20,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   
   // Opt out of parallel tests on CI
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 4,
   
   // Reporter to use
   reporter: [
@@ -165,9 +165,7 @@ export default defineConfig({
       name: 'High Contrast',
       use: {
         ...devices['Desktop Chrome'],
-        colorScheme: 'dark',
-        reducedMotion: 'reduce',
-        forcedColors: 'active'
+        colorScheme: 'dark'
       },
     },
 

@@ -34,10 +34,10 @@ const nextConfig = {
     formats: ['image/webp', 'image/avif'],
   },
   
-  // Environment variables
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
-  },
+  // Public environment variables (accessible in browser)
+  env: {},
+
+  // Private environment variables are automatically available via process.env
   
   // Headers for security and performance
   async headers() {
@@ -78,16 +78,7 @@ const nextConfig = {
   
   // Webpack configuration for audio processing
   webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // Audio worklet support
-    config.module.rules.push({
-      test: /\.worklet\.(js|ts)$/,
-      use: {
-        loader: 'worklet-loader',
-        options: {
-          name: 'static/worklets/[hash].worklet.js',
-        },
-      },
-    });
+    // Audio processing support (worklet loader not needed for current implementation)
     
     // Fallback for Node.js modules in browser
     if (!isServer) {

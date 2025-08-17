@@ -34,7 +34,6 @@ export class MediaRecorderCapture implements IAudioCapture {
 
   // Recording state
   private isRecording: boolean = false;
-  private isPaused: boolean = false;
   private recordingStartTime: number = 0;
   private audioChunks: Blob[] = [];
   
@@ -157,7 +156,6 @@ export class MediaRecorderCapture implements IAudioCapture {
       }
       
       this.stopAudioLevelMonitoring();
-      this.isPaused = true;
       this.setState(AudioCaptureState.PAUSED);
     } catch (error) {
       throw this.createError(
@@ -186,7 +184,6 @@ export class MediaRecorderCapture implements IAudioCapture {
       }
       
       this.startAudioLevelMonitoring();
-      this.isPaused = false;
       this.setState(AudioCaptureState.CAPTURING);
     } catch (error) {
       throw this.createError(
@@ -528,7 +525,7 @@ export class MediaRecorderCapture implements IAudioCapture {
 
     this.stopAudioLevelMonitoring(); // Clear any existing interval
     
-    this.audioLevelIntervalId = window.setInterval(() => {
+    this.audioLevelIntervalId = (typeof window !== 'undefined' ? window : global).setInterval(() => {
       if (!this.analyzerNode || !this.audioDataArray) {
         return;
       }
@@ -538,7 +535,10 @@ export class MediaRecorderCapture implements IAudioCapture {
       // Calculate RMS level
       let sum = 0;
       for (let i = 0; i < this.audioDataArray.length; i++) {
-        sum += this.audioDataArray[i] * this.audioDataArray[i];
+        const value = this.audioDataArray[i];
+        if (value !== undefined) {
+          sum += value * value;
+        }
       }
       
       const rms = Math.sqrt(sum / this.audioDataArray.length);
@@ -554,7 +554,7 @@ export class MediaRecorderCapture implements IAudioCapture {
 
   private stopAudioLevelMonitoring(): void {
     if (this.audioLevelIntervalId !== null) {
-      clearInterval(this.audioLevelIntervalId);
+      (typeof window !== 'undefined' ? window : global).clearInterval(this.audioLevelIntervalId);
       this.audioLevelIntervalId = null;
     }
   }
@@ -614,7 +614,6 @@ export class MediaRecorderCapture implements IAudioCapture {
       this.audioChunks = [];
       this.audioDataArray = null;
       this.isRecording = false;
-      this.isPaused = false;
 
     } catch (error) {
       console.warn('Error during cleanup:', error);
@@ -672,7 +671,7 @@ export class MediaRecorderCapture implements IAudioCapture {
   }
 
   private isMediaRecorderSupported(): boolean {
-    return typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported;
+    return typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function';
   }
 
   private getSupportedMimeType(): string {
