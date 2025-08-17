@@ -1,0 +1,197 @@
+# Main application configuration
+# Why: Centralized configuration following Spring Boot best practices
+# Pattern: Externalized configuration for flexibility across environments
+
+spring:
+  application:
+    name: interview-assistant-backend
+    
+  # Database Configuration
+  datasource:
+    url: jdbc:h2:file:./data/interview_assistant;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    hikari:
+      # Connection pool configuration for optimal performance
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update  # Use 'validate' in production
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        # Performance optimizations
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+    show-sql: false  # Enable for debugging
+  
+  # H2 Console Configuration (Development only)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false  # Security: only allow local access
+  
+  # WebSocket Configuration
+  websocket:
+    # Message size limits for audio streaming
+    max-text-message-size: 65536
+    max-binary-message-size: 524288  # 512KB for audio chunks
+    send-time-limit: 20000
+    send-buffer-size-limit: 524288
+  
+  # Security Configuration
+  security:
+    user:
+      name: admin
+      password: admin  # Change in production
+      
+# Server Configuration
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+  # Compression for better performance
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# Actuator Configuration for Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    diskspace:
+      enabled: true
+      threshold: 10485760  # 10MB
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Azure Configuration
+azure:
+  speech:
+    key: ${AZURE_SPEECH_KEY:your-key-here}
+    region: ${AZURE_SPEECH_REGION:eastus}
+    # Language detection configuration
+    auto-detect:
+      enabled: true
+      languages: en-US,es-ES,hi-IN,fr-FR,de-DE,zh-CN,ja-JP
+    # Audio format configuration
+    audio:
+      format: pcm
+      sample-rate: 16000
+      bits-per-sample: 16
+      channels: 1
+  
+  openai:
+    key: ${AZURE_OPENAI_KEY:your-key-here}
+    endpoint: ${AZURE_OPENAI_ENDPOINT:https://your-resource.openai.azure.com/}
+    deployment: ${AZURE_OPENAI_DEPLOYMENT:gpt-4}
+    api-version: 2023-05-15
+    # Response configuration
+    max-tokens: 1000
+    temperature: 0.7
+    stream: true
+    # Rate limiting
+    max-requests-per-minute: 60
+    max-tokens-per-minute: 40000
+
+# Application-specific Configuration
+app:
+  # API Key for frontend authentication
+  api:
+    key: ${APP_API_KEY:development-key-change-in-production}
+  
+  # Session Management
+  session:
+    # Session timeout in minutes
+    timeout: 30
+    # Maximum sessions per user
+    max-per-user: 5
+    # Cleanup interval in minutes
+    cleanup-interval: 10
+  
+  # Conversation Management
+  conversation:
+    # Maximum messages in memory
+    max-messages-in-memory: 20
+    # Summarization threshold (number of turns)
+    summarization-threshold: 12
+    # Maximum context tokens for AI
+    max-context-tokens: 4000
+  
+  # Audio Processing
+  audio:
+    # Voice Activity Detection threshold (0.0-1.0)
+    vad-threshold: 0.3
+    # Maximum silence duration in milliseconds
+    max-silence-duration: 2000
+    # Audio chunk duration in milliseconds
+    chunk-duration: 100
+  
+  # WebSocket Configuration
+  websocket:
+    # Heartbeat interval in seconds
+    heartbeat-interval: 30
+    # Connection timeout in seconds
+    connection-timeout: 60
+    # Maximum message queue size
+    max-queue-size: 100
+  
+  # Rate Limiting
+  rate-limiting:
+    # Requests per minute per client
+    requests-per-minute: 100
+    # Audio chunks per second per client
+    audio-chunks-per-second: 10
+    # Burst capacity
+    burst-capacity: 20
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.interview.assistant: DEBUG
+    org.springframework.web: INFO
+    org.springframework.websocket: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG  # Enable for SQL debugging
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE  # Enable for parameter logging
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/interview-assistant.log
+    max-size: 10MB
+    max-history: 30
+
+# CORS Configuration
+cors:
+  allowed-origins: http://localhost:3000
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  max-age: 3600

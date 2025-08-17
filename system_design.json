@@ -1,0 +1,866 @@
+{
+  "system_design": {
+    "overview": {
+      "application_name": "Interview Assistant",
+      "architecture_type": "Microservices with Real-time Communication",
+      "deployment_model": "Container-based Local Development",
+      "primary_patterns": [
+        "WebSocket-based Real-time Communication",
+        "Event-Driven Architecture",
+        "Streaming Data Processing",
+        "Session-based State Management"
+      ]
+    },
+    "high_level_architecture": {
+      "components": {
+        "frontend": {
+          "name": "Next.js React Application",
+          "responsibility": "User interface, audio capture, WebSocket client",
+          "technology": "Next.js 14, TypeScript, TailwindCSS, Web Audio API",
+          "port": 3000
+        },
+        "backend": {
+          "name": "Spring Boot WebSocket Server",
+          "responsibility": "WebSocket handling, Azure integration, session management",
+          "technology": "Spring Boot 3, Java 17+, Spring WebSocket",
+          "port": 8080
+        },
+        "database": {
+          "name": "H2 Database",
+          "responsibility": "Session and conversation persistence",
+          "technology": "H2 in-memory/file database",
+          "port": 9092
+        },
+        "external_services": {
+          "azure_speech": {
+            "name": "Azure Speech Services",
+            "responsibility": "Speech-to-text transcription, language detection",
+            "endpoint": "https://{region}.stt.speech.microsoft.com/"
+          },
+          "azure_openai": {
+            "name": "Azure OpenAI",
+            "responsibility": "AI-powered responses with streaming",
+            "endpoint": "https://{resource}.openai.azure.com/"
+          }
+        }
+      },
+      "data_flow": {
+        "audio_processing_flow": [
+          "1. Browser captures microphone audio (Web Audio API)",
+          "2. Audio chunked into 100-200ms PCM frames",
+          "3. Binary frames sent via WebSocket to backend",
+          "4. Backend streams audio to Azure Speech Services",
+          "5. Azure returns partial/final transcripts",
+          "6. Backend forwards transcripts to frontend via WebSocket"
+        ],
+        "ai_response_flow": [
+          "1. Final transcript triggers Azure OpenAI request",
+          "2. Backend includes conversation history in request",
+          "3. Azure OpenAI streams response tokens",
+          "4. Backend forwards tokens to frontend in real-time",
+          "5. Frontend renders streaming response",
+          "6. Complete messages persisted to database"
+        ],
+        "session_management_flow": [
+          "1. WebSocket connection establishes session",
+          "2. Session ID generated or restored from client",
+          "3. Conversation history loaded from database",
+          "4. In-memory buffer maintains recent context",
+          "5. Periodic summarization for long conversations"
+        ]
+      }
+    },
+    "detailed_component_design": {
+      "frontend_architecture": {
+        "layered_structure": {
+          "presentation_layer": {
+            "responsibility": "UI components and user interactions",
+            "components": {
+              "pages": [
+                "app/page.tsx - Main chat interface container",
+                "app/layout.tsx - Root layout with dependency injection providers"
+              ],
+              "smart_components": [
+                "ChatContainer - Orchestrates chat functionality with business logic",
+                "RecordingController - Manages audio recording state and lifecycle",
+                "ConversationManager - Handles conversation state and history"
+              ],
+              "presentational_components": [
+                "MessageBubble - Pure UI component for message display",
+                "TranscriptDisplay - Real-time transcript visualization",
+                "StatusIndicator - Connection and recording status display",
+                "LanguageSelector - Language preference controls"
+              ]
+            },
+            "design_patterns": [
+              "Container/Presentational pattern for separation of concerns",
+              "Observer pattern for real-time UI updates"
+            ]
+          },
+          "application_layer": {
+            "responsibility": "Application logic and use case orchestration",
+            "components": {
+              "custom_hooks": [
+                "useConversation - Conversation state management and business rules",
+                "useAudioRecording - Audio capture lifecycle and state",
+                "useWebSocketConnection - WebSocket connection management",
+                "useTranscription - Transcription state and event handling"
+              ],
+              "services": [
+                "ConversationOrchestrator - Coordinates conversation flow",
+                "AudioWorkflowService - Manages audio processing workflow",
+                "UIStateManager - Centralized UI state management"
+              ]
+            },
+            "design_patterns": [
+              "Command pattern for user actions",
+              "Mediator pattern for component communication"
+            ]
+          }
+        },
+        "domain_layer": {
+          "responsibility": "Core business logic and domain entities",
+          "components": {
+            "entities": [
+              "Conversation - Core conversation aggregate",
+              "Message - Individual message entity with metadata",
+              "AudioSegment - Audio data with processing metadata",
+              "TranscriptSegment - Transcript with confidence and timing"
+            ],
+            "value_objects": [
+              "SessionId - Strongly typed session identifier",
+              "AudioFormat - Audio format specification",
+              "LanguageCode - ISO language code with validation",
+              "Confidence - Transcript confidence score"
+            ],
+            "domain_services": [
+              "ConversationMemoryService - Manages conversation context",
+              "AudioProcessingService - Core audio processing logic",
+              "TranscriptAggregationService - Combines partial transcripts"
+            ]
+          },
+          "design_patterns": [
+            "Domain-Driven Design entities and value objects",
+            "Specification pattern for business rules"
+          ]
+        },
+        "infrastructure_layer": {
+          "responsibility": "External integrations and technical implementations",
+          "components": {
+            "adapters": [
+              "WebSocketClientAdapter - WebSocket communication implementation",
+              "BrowserAudioAdapter - Browser audio API integration",
+              "LocalStorageAdapter - Browser storage implementation"
+            ],
+            "services": [
+              "wsClient.ts - WebSocket connection management with reconnection",
+              "audioCapture.ts - Browser audio capture implementation",
+              "audioProcessor.ts - Audio format conversion and VAD",
+              "sessionPersistence.ts - Session persistence and restoration"
+            ],
+            "factories": [
+              "AudioCaptureFactory - Creates appropriate audio capture implementation",
+              "WebSocketClientFactory - Creates WebSocket client with configuration"
+            ]
+          },
+          "design_patterns": [
+            "Adapter pattern for external API integration",
+            "Factory pattern for implementation selection"
+          ]
+        },
+        "audio_processing": {
+          "capture_method": "AudioWorklet (fallback to MediaRecorder)",
+          "format": "16-bit PCM, 16kHz, mono",
+          "chunk_size": "100-200ms (1600-3200 samples)",
+          "vad_implementation": "Simple RMS threshold with duration check",
+          "browser_compatibility": {
+            "primary": "AudioWorklet for Chrome, Firefox, Edge",
+            "fallback": "MediaRecorder for Safari and older browsers"
+          }
+        },
+        "websocket_client": {
+          "connection_management": {
+            "auto_reconnect": true,
+            "backoff_strategy": "Exponential (200ms → 10s)",
+            "max_retries": 10,
+            "heartbeat_interval": 30000
+          },
+          "message_handling": {
+            "binary_frames": "Audio data transmission",
+            "json_control": "Session control and events",
+            "error_recovery": "Automatic retry with user notification"
+          }
+        }
+      },
+      "backend_architecture": {
+        "layered_structure": {
+          "presentation_layer": {
+            "responsibility": "Handle incoming requests and WebSocket connections",
+            "components": {
+              "websocket_handlers": [
+                "StreamingWebSocketHandler - Main WebSocket endpoint with chain of responsibility",
+                "MessageValidationHandler - Validates incoming messages",
+                "AuthenticationHandler - Verifies client authentication",
+                "RateLimitingHandler - Enforces rate limits",
+                "BusinessLogicHandler - Processes business requests"
+              ],
+              "rest_controllers": [
+                "HealthController - System health and monitoring endpoints",
+                "SessionController - RESTful session management API",
+                "MetricsController - Performance and usage metrics"
+              ]
+            },
+            "design_patterns": [
+              "Chain of Responsibility for message processing",
+              "Command pattern for request handling"
+            ]
+          },
+          "application_layer": {
+            "responsibility": "Orchestrate use cases and coordinate domain objects",
+            "components": {
+              "use_case_services": [
+                "StartConversationUseCase - Initialize new conversation session",
+                "ProcessAudioUseCase - Handle incoming audio and trigger transcription",
+                "GenerateResponseUseCase - Create AI responses with context",
+                "ManageSessionUseCase - Session lifecycle management"
+              ],
+              "event_handlers": [
+                "TranscriptionEventHandler - Handle transcription completion events",
+                "AIResponseEventHandler - Handle AI response streaming events",
+                "SessionEventHandler - Handle session lifecycle events"
+              ],
+              "orchestrators": [
+                "ConversationOrchestrator - Coordinate conversation flow",
+                "AudioProcessingOrchestrator - Manage audio processing pipeline"
+              ]
+            },
+            "design_patterns": [
+              "Use Case pattern for business workflows",
+              "Event-driven architecture for loose coupling"
+            ]
+          },
+          "domain_layer": {
+            "responsibility": "Core business logic and domain rules",
+            "components": {
+              "aggregates": [
+                "ConversationAggregate - Core conversation business logic",
+                "SessionAggregate - Session lifecycle and validation"
+              ],
+              "entities": [
+                "Session - Session entity with business rules",
+                "Message - Message entity with metadata",
+                "AudioChunk - Audio data with processing information"
+              ],
+              "value_objects": [
+                "SessionId - Strongly typed session identifier",
+                "MessageId - Unique message identifier",
+                "TranscriptConfidence - Transcript confidence score",
+                "AudioFormat - Audio format specification"
+              ],
+              "domain_services": [
+                "ConversationMemoryService - Manages conversation context and summarization",
+                "LanguageDetectionService - Handles language detection logic",
+                "AudioValidationService - Validates audio data quality"
+              ]
+            },
+            "design_patterns": [
+              "Domain-Driven Design patterns",
+              "Specification pattern for business rules"
+            ]
+          },
+          "infrastructure_layer": {
+            "responsibility": "External integrations and technical implementations",
+            "components": {
+              "adapters": [
+                "AzureSpeechServiceAdapter - Azure Speech Services integration",
+                "AzureOpenAIServiceAdapter - Azure OpenAI integration",
+                "DatabaseAdapter - Database access implementation"
+              ],
+              "repositories": [
+                "SessionRepository - Session persistence with multiple backends",
+                "MessageRepository - Message storage and retrieval",
+                "ConversationSummaryRepository - Summarization storage"
+              ],
+              "external_services": [
+                "AzureSpeechClient - Direct Azure Speech SDK integration",
+                "AzureOpenAIClient - HTTP client for OpenAI API",
+                "WebSocketEventPublisher - Event publishing for real-time updates"
+              ],
+              "configuration": [
+                "WebSocketConfig - WebSocket endpoint and security configuration",
+                "DatabaseConfig - Database connection and transaction management",
+                "AzureConfig - Azure service authentication and configuration",
+                "SecurityConfig - Authentication and authorization setup"
+              ]
+            },
+            "design_patterns": [
+              "Adapter pattern for external service integration",
+              "Repository pattern for data access abstraction",
+              "Factory pattern for service creation"
+            ]
+          }
+        },
+        "websocket_handler_flow": {
+          "connection_establishment": [
+            "1. WebSocket connection accepted",
+            "2. Session created or restored from sessionId",
+            "3. Azure Speech stream initialized",
+            "4. Session ready event sent to client"
+          ],
+          "message_processing": {
+            "binary_audio": [
+              "1. Receive audio chunk from client",
+              "2. Apply voice activity detection",
+              "3. Forward to Azure Speech stream if voice detected",
+              "4. Handle backpressure with frame dropping"
+            ],
+            "json_control": [
+              "1. Parse JSON control message",
+              "2. Route to appropriate handler",
+              "3. Update session state",
+              "4. Send response events to client"
+            ]
+          },
+          "transcription_handling": [
+            "1. Receive partial/final transcript from Azure",
+            "2. Forward partial transcripts immediately",
+            "3. On final transcript, trigger AI response",
+            "4. Persist final transcript to database"
+          ],
+          "ai_response_streaming": [
+            "1. Build conversation context from history",
+            "2. Send request to Azure OpenAI with streaming",
+            "3. Forward each token to client immediately",
+            "4. Persist complete response to database"
+          ]
+        },
+        "azure_integration": {
+          "speech_service": {
+            "sdk": "Azure Speech SDK for Java",
+            "configuration": {
+              "format": "PCM 16kHz 16-bit mono",
+              "language": "Auto-detect or specified",
+              "partial_results": true,
+              "phrase_hints": "Configurable for domain terms"
+            },
+            "streaming_setup": [
+              "1. Create SpeechRecognizer with streaming config",
+              "2. Subscribe to partial and final result events",
+              "3. Handle continuous recognition session",
+              "4. Manage recognition start/stop lifecycle"
+            ]
+          },
+          "openai_service": {
+            "api": "Azure OpenAI REST API",
+            "configuration": {
+              "model": "gpt-4o or latest deployment",
+              "stream": true,
+              "max_tokens": 1000,
+              "temperature": 0.7
+            },
+            "streaming_implementation": [
+              "1. HTTP SSE connection to completions endpoint",
+              "2. Parse SSE events for token deltas",
+              "3. Forward tokens via WebSocket immediately",
+              "4. Handle stream completion and errors"
+            ],
+            "system_prompt": "Optimized for concise, accurate real-time responses"
+          }
+        },
+        "session_management": {
+          "in_memory_buffer": {
+            "purpose": "Fast access to recent conversation turns",
+            "size_limit": "Last 10-15 message pairs",
+            "eviction_policy": "FIFO with persistence to database"
+          },
+          "database_persistence": {
+            "session_lifecycle": "Create → Update → Archive/Delete",
+            "message_storage": "All messages with metadata",
+            "summarization": "Automatic after 12+ turns"
+          },
+          "context_management": {
+            "token_limit": "Monitor total tokens in context",
+            "summarization_trigger": "When approaching model limits",
+            "summary_strategy": "Preserve key information and recent context"
+          }
+        }
+      }
+    },
+    "database_design": {
+      "h2_configuration": {
+        "mode": "File-based with in-memory option",
+        "connection_url": "jdbc:h2:file:./data/conversations;AUTO_SERVER=TRUE",
+        "console_access": "http://localhost:8080/h2-console",
+        "auto_ddl": "create-drop for development"
+      },
+      "schema_design": {
+        "sessions": {
+          "table_name": "sessions",
+          "columns": {
+            "id": "VARCHAR(36) PRIMARY KEY - UUID",
+            "created_at": "TIMESTAMP NOT NULL",
+            "last_accessed_at": "TIMESTAMP NOT NULL",
+            "target_language": "VARCHAR(10) DEFAULT 'en'",
+            "auto_detect": "BOOLEAN DEFAULT true",
+            "status": "VARCHAR(20) DEFAULT 'active'"
+          },
+          "indexes": ["last_accessed_at", "status"]
+        },
+        "messages": {
+          "table_name": "messages",
+          "columns": {
+            "id": "BIGINT AUTO_INCREMENT PRIMARY KEY",
+            "session_id": "VARCHAR(36) NOT NULL",
+            "role": "VARCHAR(20) NOT NULL - user/assistant",
+            "content": "CLOB NOT NULL",
+            "created_at": "TIMESTAMP NOT NULL",
+            "tokens_used": "INTEGER DEFAULT 0",
+            "language_detected": "VARCHAR(10)",
+            "confidence_score": "DECIMAL(3,2)"
+          },
+          "indexes": ["session_id", "created_at", "role"],
+          "foreign_keys": ["session_id REFERENCES sessions(id) ON DELETE CASCADE"]
+        },
+        "conversation_summaries": {
+          "table_name": "conversation_summaries",
+          "columns": {
+            "id": "BIGINT AUTO_INCREMENT PRIMARY KEY",
+            "session_id": "VARCHAR(36) NOT NULL",
+            "summary_text": "CLOB NOT NULL",
+            "start_message_id": "BIGINT NOT NULL",
+            "end_message_id": "BIGINT NOT NULL",
+            "created_at": "TIMESTAMP NOT NULL"
+          },
+          "indexes": ["session_id", "created_at"]
+        }
+      },
+      "data_management": {
+        "retention_policy": {
+          "active_sessions": "30 days of inactivity",
+          "archived_sessions": "90 days total retention",
+          "cleanup_job": "Daily scheduled task"
+        },
+        "performance_optimization": {
+          "connection_pooling": "HikariCP with optimized settings",
+          "query_optimization": "Indexed queries for session retrieval",
+          "batch_operations": "Bulk insert for high-throughput scenarios"
+        }
+      }
+    },
+    "api_specifications": {
+      "websocket_protocol": {
+        "endpoint": "ws://localhost:8080/ws/stream",
+        "subprotocol": "voice-qa-v1",
+        "authentication": "X-API-KEY header validation",
+        "client_to_server": {
+          "binary_frames": {
+            "description": "Audio data chunks",
+            "format": "16-bit PCM, little-endian, 16kHz, mono",
+            "size": "1600-3200 bytes (100-200ms audio)",
+            "encoding": "Raw binary WebSocket frame"
+          },
+          "json_messages": {
+            "start_session": {
+              "type": "start",
+              "sessionId": "optional-uuid-string",
+              "autoDetect": "boolean",
+              "targetLang": "string (ISO 639-1 code)",
+              "pushToTalk": "boolean"
+            },
+            "stop_recording": {
+              "type": "stop"
+            },
+            "manual_input": {
+              "type": "userText",
+              "text": "string",
+              "language": "optional-string"
+            },
+            "clear_session": {
+              "type": "clear"
+            },
+            "heartbeat": {
+              "type": "ping",
+              "timestamp": "number"
+            }
+          }
+        },
+        "server_to_client": {
+          "session_events": {
+            "session_ready": {
+              "type": "session.ready",
+              "sessionId": "string",
+              "targetLanguage": "string"
+            },
+            "session_restored": {
+              "type": "session.restored",
+              "sessionId": "string",
+              "history": "Message[]",
+              "summary": "optional-string"
+            }
+          },
+          "transcription_events": {
+            "partial_transcript": {
+              "type": "transcript.partial",
+              "text": "string",
+              "seq": "number",
+              "confidence": "number"
+            },
+            "final_transcript": {
+              "type": "transcript.final",
+              "text": "string",
+              "seq": "number",
+              "language": "string",
+              "confidence": "number"
+            }
+          },
+          "ai_response_events": {
+            "response_start": {
+              "type": "assistant.start",
+              "messageId": "string"
+            },
+            "response_delta": {
+              "type": "assistant.delta",
+              "token": "string",
+              "messageId": "string"
+            },
+            "response_complete": {
+              "type": "assistant.done",
+              "messageId": "string",
+              "tokensUsed": "number"
+            }
+          },
+          "error_events": {
+            "error": {
+              "type": "error",
+              "code": "string",
+              "message": "string",
+              "retryable": "boolean",
+              "details": "optional-object"
+            }
+          },
+          "system_events": {
+            "heartbeat": {
+              "type": "pong",
+              "timestamp": "number"
+            }
+          }
+        }
+      },
+      "rest_endpoints": {
+        "health_check": {
+          "path": "/api/health",
+          "method": "GET",
+          "response": {
+            "status": "UP|DOWN",
+            "timestamp": "ISO-8601-string",
+            "services": {
+              "database": "UP|DOWN",
+              "azure_speech": "UP|DOWN",
+              "azure_openai": "UP|DOWN"
+            }
+          }
+        },
+        "session_management": {
+          "list_sessions": {
+            "path": "/api/sessions",
+            "method": "GET",
+            "query_params": ["limit", "offset", "status"],
+            "response": "Session[]"
+          },
+          "get_session": {
+            "path": "/api/sessions/{sessionId}",
+            "method": "GET",
+            "response": "Session with message history"
+          },
+          "delete_session": {
+            "path": "/api/sessions/{sessionId}",
+            "method": "DELETE",
+            "response": "204 No Content"
+          }
+        },
+        "h2_console": {
+          "path": "/h2-console",
+          "method": "GET",
+          "description": "Database console for development",
+          "enabled": "development profile only"
+        }
+      }
+    },
+    "security_design": {
+      "authentication": {
+        "api_key_validation": {
+          "header": "X-API-KEY",
+          "validation": "Configurable shared secret",
+          "scope": "All WebSocket and REST endpoints"
+        },
+        "session_validation": {
+          "session_id": "UUID format validation",
+          "ownership": "Session-to-connection mapping",
+          "timeout": "Configurable session timeout"
+        }
+      },
+      "data_protection": {
+        "audio_data": {
+          "transmission": "Binary WebSocket frames",
+          "storage": "No persistent audio storage",
+          "encryption": "TLS in production"
+        },
+        "conversation_data": {
+          "database_encryption": "H2 file encryption in production",
+          "pii_handling": "No PII detection in initial version",
+          "retention": "Configurable retention policies"
+        }
+      },
+      "network_security": {
+        "cors_configuration": {
+          "allowed_origins": "Configurable origin list",
+          "allowed_methods": ["GET", "POST", "OPTIONS"],
+          "credentials": false
+        },
+        "rate_limiting": {
+          "websocket_connections": "Per-IP connection limits",
+          "message_rate": "Messages per second per session",
+          "azure_api_calls": "Respect service quotas"
+        }
+      },
+      "input_validation": {
+        "websocket_messages": "JSON schema validation",
+        "audio_frames": "Size and format validation",
+        "rest_parameters": "Parameter sanitization",
+        "sql_injection": "Parameterized queries only"
+      }
+    },
+    "error_handling_and_resilience": {
+      "error_categories": {
+        "client_errors": {
+          "microphone_access_denied": {
+            "code": "MIC_DENIED",
+            "recovery": "Show manual text input option",
+            "user_message": "Microphone access required for voice input"
+          },
+          "websocket_connection_failed": {
+            "code": "WS_CONNECT_FAILED",
+            "recovery": "Automatic retry with exponential backoff",
+            "user_message": "Connection failed, retrying..."
+          },
+          "session_expired": {
+            "code": "SESSION_EXPIRED",
+            "recovery": "Create new session, restore history if possible",
+            "user_message": "Session expired, starting fresh"
+          }
+        },
+        "service_errors": {
+          "azure_speech_unavailable": {
+            "code": "STT_UNAVAILABLE",
+            "recovery": "Show manual text input, retry speech service",
+            "user_message": "Voice recognition temporarily unavailable"
+          },
+          "azure_openai_rate_limited": {
+            "code": "AI_RATE_LIMITED",
+            "recovery": "Exponential backoff retry",
+            "user_message": "AI service busy, please wait..."
+          },
+          "database_connection_lost": {
+            "code": "DB_UNAVAILABLE",
+            "recovery": "Continue with in-memory only, attempt reconnection",
+            "user_message": "Conversation history temporarily unavailable"
+          }
+        },
+        "system_errors": {
+          "out_of_memory": {
+            "code": "MEMORY_EXHAUSTED",
+            "recovery": "Clear old sessions, restart if necessary",
+            "user_message": "System resources low, please refresh"
+          },
+          "configuration_error": {
+            "code": "CONFIG_ERROR",
+            "recovery": "Log error, return generic failure",
+            "user_message": "Service configuration error"
+          }
+        }
+      },
+      "retry_strategies": {
+        "exponential_backoff": {
+          "initial_delay": "200ms",
+          "max_delay": "10s",
+          "multiplier": 2,
+          "max_attempts": 10
+        },
+        "circuit_breaker": {
+          "failure_threshold": 5,
+          "recovery_timeout": "30s",
+          "half_open_max_calls": 3
+        }
+      },
+      "graceful_degradation": {
+        "speech_service_down": "Fall back to manual text input",
+        "ai_service_down": "Show error message, allow conversation history review",
+        "database_down": "Continue with in-memory session only",
+        "websocket_down": "Show reconnection UI with manual retry"
+      },
+      "monitoring_and_alerting": {
+        "health_checks": {
+          "frequency": "Every 30 seconds",
+          "endpoints": ["/api/health", "Azure service connectivity"],
+          "failure_threshold": 3
+        },
+        "logging": {
+          "level": "INFO for normal operations, DEBUG for development",
+          "format": "Structured JSON logging with correlation IDs",
+          "retention": "7 days for development, configurable for production"
+        },
+        "metrics": {
+          "websocket_connections": "Active connection count",
+          "azure_api_latency": "P95 latency for Azure calls",
+          "error_rates": "Errors per minute by category",
+          "session_duration": "Average session length"
+        }
+      }
+    },
+    "performance_optimization": {
+      "latency_optimization": {
+        "audio_pipeline": {
+          "chunk_size": "100-200ms for optimal latency/quality balance",
+          "buffer_management": "Minimize buffering at each stage",
+          "parallel_processing": "Concurrent Azure Speech and OpenAI calls where possible"
+        },
+        "websocket_optimization": {
+          "frame_compression": "Optional compression for JSON messages",
+          "binary_frames": "Raw binary for minimal overhead",
+          "connection_pooling": "Efficient connection reuse"
+        },
+        "backend_optimization": {
+          "async_processing": "CompletableFuture for non-blocking operations",
+          "thread_pools": "Separate pools for different operation types",
+          "caching": "In-memory caching for frequent database queries"
+        }
+      },
+      "throughput_optimization": {
+        "concurrent_sessions": {
+          "target": "100+ simultaneous sessions",
+          "resource_allocation": "Bounded thread pools and memory limits",
+          "load_shedding": "Drop connections when capacity exceeded"
+        },
+        "database_optimization": {
+          "connection_pooling": "HikariCP with optimized settings",
+          "batch_operations": "Batch insert for message persistence",
+          "index_optimization": "Proper indexing for query performance"
+        }
+      },
+      "memory_optimization": {
+        "conversation_management": {
+          "buffer_limits": "Maximum messages per session in memory",
+          "garbage_collection": "Periodic cleanup of inactive sessions",
+          "summarization": "Compress long conversations to reduce memory"
+        },
+        "audio_processing": {
+          "streaming": "Process audio chunks without full buffering",
+          "cleanup": "Immediate cleanup of processed audio data",
+          "memory_monitoring": "Track memory usage and alert on high usage"
+        }
+      }
+    },
+    "deployment_architecture": {
+      "development_setup": {
+        "docker_compose": {
+          "services": {
+            "backend": {
+              "image": "interview-assistant-backend:latest",
+              "ports": ["8080:8080"],
+              "environment": "Development configuration",
+              "volumes": ["./data:/app/data"]
+            },
+            "frontend": {
+              "image": "interview-assistant-frontend:latest",
+              "ports": ["3000:3000"],
+              "environment": "Development configuration",
+              "depends_on": ["backend"]
+            }
+          },
+          "networks": {
+            "interview-network": "Custom bridge network for service communication"
+          }
+        },
+        "local_development": {
+          "backend": "mvn spring-boot:run",
+          "frontend": "pnpm dev",
+          "database": "H2 file-based with console access",
+          "hot_reload": "Automatic recompilation and restart"
+        }
+      },
+      "production_considerations": {
+        "scalability": {
+          "horizontal_scaling": "Multiple backend instances behind load balancer",
+          "session_affinity": "Required for WebSocket connections",
+          "database_scaling": "Migration to PostgreSQL/MongoDB for production"
+        },
+        "monitoring": {
+          "application_metrics": "Micrometer with Prometheus export",
+          "health_monitoring": "Spring Boot Actuator endpoints",
+          "distributed_tracing": "OpenTelemetry integration"
+        },
+        "security_hardening": {
+          "tls_termination": "HTTPS/WSS in production",
+          "authentication": "OAuth2/JWT instead of API keys",
+          "secrets_management": "Azure Key Vault integration"
+        }
+      }
+    },
+    "testing_strategy": {
+      "unit_testing": {
+        "backend": {
+          "framework": "JUnit 5 with Mockito",
+          "coverage_target": ">80%",
+          "focus_areas": [
+            "ConversationService logic",
+            "WebSocket message handling",
+            "Azure service integration",
+            "Session management"
+          ]
+        },
+        "frontend": {
+          "framework": "Jest with React Testing Library",
+          "coverage_target": ">75%",
+          "focus_areas": [
+            "WebSocket client logic",
+            "Audio recording components",
+            "Message rendering",
+            "Error handling"
+          ]
+        }
+      },
+      "integration_testing": {
+        "websocket_integration": {
+          "framework": "Spring Boot Test with WebSocket test client",
+          "scenarios": [
+            "Session creation and restoration",
+            "Audio streaming and transcription",
+            "AI response streaming",
+            "Error handling and recovery"
+          ]
+        },
+        "azure_service_mocking": {
+          "speech_service": "Mock Azure Speech SDK responses",
+          "openai_service": "Mock HTTP responses for OpenAI API",
+          "error_simulation": "Simulate various Azure service failures"
+        }
+      },
+      "end_to_end_testing": {
+        "framework": "Playwright for browser automation",
+        "test_scenarios": [
+          "Complete voice conversation flow",
+          "Session restoration after refresh",
+          "Error handling and recovery",
+          "Multi-language functionality"
+        ],
+        "environment": "Docker Compose with mock Azure services"
+      },
+      "performance_testing": {
+        "load_testing": "JMeter for WebSocket load testing",
+        "stress_testing": "Simulate high concurrent user scenarios",
+        "latency_testing": "Measure end-to-end response times",
+        "memory_testing": "Monitor memory usage under load"
+      }
+    }
+  }
+}

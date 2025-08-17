@@ -1,0 +1,610 @@
+{
+  "architecture_design": {
+    "overview": {
+      "title": "Interview Assistant - Modular Architecture with SOLID Principles",
+      "description": "A well-architected real-time voice Q&A system following Domain-Driven Design, SOLID principles, and proven design patterns",
+      "design_philosophy": {
+        "domain_driven_design": "Business logic isolated from infrastructure concerns",
+        "solid_principles": "Applied throughout to ensure maintainability and extensibility",
+        "design_patterns": "Strategic use of patterns to solve specific architectural challenges",
+        "testability": "Every component designed for easy unit and integration testing",
+        "modularity": "Clear boundaries between modules with well-defined interfaces"
+      }
+    },
+    "core_principles": {
+      "single_responsibility": {
+        "principle": "Each class/module has one reason to change",
+        "implementation": "Separate classes for audio capture, transcription, AI processing, and session management",
+        "rationale": "Reduces coupling and makes code easier to understand and maintain"
+      },
+      "open_closed": {
+        "principle": "Open for extension, closed for modification",
+        "implementation": "Use interfaces and abstract classes for extensibility",
+        "rationale": "New transcription providers or AI services can be added without changing existing code"
+      },
+      "liskov_substitution": {
+        "principle": "Derived classes must be substitutable for their base classes",
+        "implementation": "All implementations follow interface contracts strictly",
+        "rationale": "Enables polymorphism and flexible component replacement"
+      },
+      "interface_segregation": {
+        "principle": "Clients should not depend on interfaces they don't use",
+        "implementation": "Focused interfaces like IAudioProcessor, ITranscriptionService, IAIProvider",
+        "rationale": "Prevents unnecessary dependencies and improves modularity"
+      },
+      "dependency_inversion": {
+        "principle": "Depend on abstractions, not concretions",
+        "implementation": "All external dependencies injected via interfaces",
+        "rationale": "Makes system flexible and testable through dependency injection"
+      }
+    },
+    "layered_architecture": {
+      "presentation_layer": {
+        "responsibility": "User interface and user interaction handling",
+        "components": [
+          "React Components (UI rendering)",
+          "Custom Hooks (state management)",
+          "Event Handlers (user actions)",
+          "UI State Management (local component state)"
+        ],
+        "dependencies": "Application Layer only",
+        "rationale": "Isolates UI concerns from business logic, enabling independent UI testing"
+      },
+      "application_layer": {
+        "responsibility": "Application use cases and orchestration",
+        "components": [
+          "Use Case Services (business workflows)",
+          "Command Handlers (user actions)",
+          "Event Coordinators (cross-cutting concerns)",
+          "Application State (session state)"
+        ],
+        "dependencies": "Domain Layer and Infrastructure abstractions",
+        "rationale": "Coordinates domain objects and infrastructure to implement business workflows"
+      },
+      "domain_layer": {
+        "responsibility": "Core business logic and entities",
+        "components": [
+          "Domain Entities (Session, Message, Conversation)",
+          "Value Objects (TranscriptSegment, AudioChunk)",
+          "Domain Services (ConversationMemory, LanguageDetection)",
+          "Business Rules (validation, constraints)"
+        ],
+        "dependencies": "None (pure domain logic)",
+        "rationale": "Contains the core business logic that doesn't change based on technology choices"
+      },
+      "infrastructure_layer": {
+        "responsibility": "External integrations and technical concerns",
+        "components": [
+          "Azure Service Adapters",
+          "Database Repositories",
+          "WebSocket Handlers",
+          "Configuration Management"
+        ],
+        "dependencies": "Domain abstractions",
+        "rationale": "Implements technical details while maintaining separation from business logic"
+      }
+    },
+    "design_patterns": {
+      "factory_pattern": {
+        "purpose": "Create objects without specifying exact classes",
+        "implementation": {
+          "audio_processor_factory": {
+            "interface": "IAudioProcessorFactory",
+            "concrete_factories": [
+              "AudioWorkletProcessorFactory",
+              "MediaRecorderProcessorFactory"
+            ],
+            "creation_logic": "Browser capability detection determines which processor to create",
+            "rationale": "Abstracts browser-specific audio processing implementation details"
+          },
+          "transcription_service_factory": {
+            "interface": "ITranscriptionServiceFactory",
+            "concrete_factories": [
+              "AzureSpeechServiceFactory",
+              "MockTranscriptionServiceFactory"
+            ],
+            "creation_logic": "Configuration determines which service to instantiate",
+            "rationale": "Enables easy switching between real and mock services for testing"
+          }
+        }
+      },
+      "strategy_pattern": {
+        "purpose": "Select algorithm at runtime based on context",
+        "implementation": {
+          "audio_processing_strategy": {
+            "interface": "IAudioProcessingStrategy",
+            "strategies": [
+              "ContinuousRecordingStrategy",
+              "PushToTalkStrategy",
+              "VoiceActivatedStrategy"
+            ],
+            "selection_criteria": "User preference and use case requirements",
+            "rationale": "Allows different recording modes without changing core recording logic"
+          },
+          "ai_response_strategy": {
+            "interface": "IAIResponseStrategy",
+            "strategies": [
+              "StreamingResponseStrategy",
+              "BatchResponseStrategy",
+              "CachedResponseStrategy"
+            ],
+            "selection_criteria": "Network conditions and user preferences",
+            "rationale": "Optimizes response delivery based on context and capabilities"
+          }
+        }
+      },
+      "observer_pattern": {
+        "purpose": "Notify multiple objects about state changes",
+        "implementation": {
+          "websocket_event_system": {
+            "subject": "WebSocketEventBus",
+            "observers": [
+              "TranscriptionObserver",
+              "AIResponseObserver",
+              "SessionStateObserver",
+              "UIUpdateObserver"
+            ],
+            "event_types": [
+              "ConnectionEstablished",
+              "TranscriptReceived",
+              "AITokenReceived",
+              "ErrorOccurred"
+            ],
+            "rationale": "Decouples WebSocket events from event handlers, enabling flexible event processing"
+          },
+          "conversation_state_observer": {
+            "subject": "ConversationState",
+            "observers": [
+              "PersistenceObserver",
+              "MemoryManagementObserver",
+              "AnalyticsObserver"
+            ],
+            "rationale": "Allows multiple systems to react to conversation changes independently"
+          }
+        }
+      },
+      "repository_pattern": {
+        "purpose": "Abstract data access logic",
+        "implementation": {
+          "session_repository": {
+            "interface": "ISessionRepository",
+            "implementations": [
+              "H2SessionRepository",
+              "InMemorySessionRepository",
+              "PostgreSQLSessionRepository"
+            ],
+            "methods": [
+              "findById(sessionId)",
+              "save(session)",
+              "findByUserId(userId)",
+              "deleteExpired()"
+            ],
+            "rationale": "Isolates data access logic and enables easy database switching"
+          },
+          "message_repository": {
+            "interface": "IMessageRepository",
+            "implementations": [
+              "H2MessageRepository",
+              "InMemoryMessageRepository"
+            ],
+            "methods": [
+              "saveMessage(message)",
+              "getConversationHistory(sessionId)",
+              "summarizeOldMessages(sessionId)"
+            ],
+            "rationale": "Provides consistent interface for message persistence regardless of storage mechanism"
+          }
+        }
+      },
+      "adapter_pattern": {
+        "purpose": "Make incompatible interfaces work together",
+        "implementation": {
+          "azure_speech_adapter": {
+            "target_interface": "ITranscriptionService",
+            "adaptee": "Azure Speech SDK",
+            "adapter": "AzureSpeechServiceAdapter",
+            "adaptation_concerns": [
+              "Convert Azure-specific events to domain events",
+              "Handle Azure-specific error formats",
+              "Manage Azure authentication"
+            ],
+            "rationale": "Isolates Azure-specific code and makes it easy to swap transcription providers"
+          },
+          "azure_openai_adapter": {
+            "target_interface": "IAIService",
+            "adaptee": "Azure OpenAI REST API",
+            "adapter": "AzureOpenAIServiceAdapter",
+            "adaptation_concerns": [
+              "Convert REST responses to domain objects",
+              "Handle streaming responses",
+              "Manage API rate limiting"
+            ],
+            "rationale": "Enables easy switching between AI providers without changing business logic"
+          }
+        }
+      },
+      "chain_of_responsibility": {
+        "purpose": "Process requests through a chain of handlers",
+        "implementation": {
+          "message_processing_chain": {
+            "handlers": [
+              "ValidationHandler - validates message format and content",
+              "AuthenticationHandler - verifies client authentication",
+              "RateLimitingHandler - enforces rate limits",
+              "BusinessLogicHandler - processes the actual request",
+              "LoggingHandler - logs request for debugging"
+            ],
+            "rationale": "Provides flexible request processing pipeline that can be easily modified"
+          },
+          "error_handling_chain": {
+            "handlers": [
+              "RetryableErrorHandler - attempts automatic retry",
+              "UserNotificationHandler - shows user-friendly error messages",
+              "LoggingErrorHandler - logs errors for debugging",
+              "FallbackHandler - provides fallback functionality"
+            ],
+            "rationale": "Ensures consistent error handling across the application"
+          }
+        }
+      },
+      "command_pattern": {
+        "purpose": "Encapsulate requests as objects",
+        "implementation": {
+          "user_actions": {
+            "commands": [
+              "StartRecordingCommand",
+              "StopRecordingCommand",
+              "SendTextMessageCommand",
+              "ClearConversationCommand"
+            ],
+            "command_processor": "CommandBus",
+            "benefits": [
+              "Undo/redo functionality",
+              "Command queuing",
+              "Audit logging"
+            ],
+            "rationale": "Provides consistent way to handle user actions and enables advanced features"
+          }
+        }
+      }
+    },
+    "module_structure": {
+      "frontend_modules": {
+        "audio_module": {
+          "purpose": "Handle all audio-related functionality",
+          "components": {
+            "interfaces": [
+              "IAudioCapture - defines audio capture contract",
+              "IAudioProcessor - defines audio processing contract",
+              "IVoiceActivityDetector - defines VAD contract"
+            ],
+            "implementations": [
+              "AudioWorkletCapture - modern audio capture using AudioWorklet",
+              "MediaRecorderCapture - fallback audio capture",
+              "AudioFormatConverter - converts between audio formats",
+              "SimpleVoiceActivityDetector - RMS-based silence detection"
+            ],
+            "factories": [
+              "AudioCaptureFactory - creates appropriate capture implementation"
+            ]
+          },
+          "rationale": "Isolates complex audio processing logic and provides clean abstraction for the rest of the app"
+        },
+        "communication_module": {
+          "purpose": "Handle WebSocket communication with backend",
+          "components": {
+            "interfaces": [
+              "IWebSocketClient - defines WebSocket communication contract",
+              "IMessageHandler - defines message processing contract",
+              "IConnectionManager - defines connection management contract"
+            ],
+            "implementations": [
+              "WebSocketClient - actual WebSocket implementation",
+              "MessageRouter - routes messages to appropriate handlers",
+              "ReconnectionManager - handles connection recovery",
+              "MessageEncoder/Decoder - serializes/deserializes messages"
+            ],
+            "patterns": [
+              "Observer pattern for message handling",
+              "Strategy pattern for reconnection strategies"
+            ]
+          },
+          "rationale": "Provides reliable, extensible communication layer with proper error handling"
+        },
+        "conversation_module": {
+          "purpose": "Manage conversation state and history",
+          "components": {
+            "interfaces": [
+              "IConversationState - defines conversation state contract",
+              "IMessageStore - defines message storage contract"
+            ],
+            "implementations": [
+              "ConversationStateManager - manages conversation state",
+              "LocalStorageMessageStore - persists to browser storage",
+              "MessageFormatter - formats messages for display"
+            ],
+            "value_objects": [
+              "Message - immutable message representation",
+              "TranscriptSegment - partial/final transcript data"
+            ]
+          },
+          "rationale": "Centralizes conversation logic and provides consistent state management"
+        },
+        "ui_module": {
+          "purpose": "User interface components and interactions",
+          "components": {
+            "smart_components": [
+              "ChatContainer - orchestrates chat functionality",
+              "RecordingController - manages recording state"
+            ],
+            "presentational_components": [
+              "MessageBubble - displays individual messages",
+              "TranscriptDisplay - shows live transcripts",
+              "StatusIndicator - shows connection/recording status"
+            ],
+            "hooks": [
+              "useConversation - conversation state hook",
+              "useRecording - recording state hook",
+              "useWebSocket - WebSocket connection hook"
+            ]
+          },
+          "rationale": "Separates smart and dumb components for better testability and reusability"
+        }
+      },
+      "backend_modules": {
+        "websocket_module": {
+          "purpose": "Handle WebSocket connections and message routing",
+          "components": {
+            "interfaces": [
+              "IWebSocketHandler - defines WebSocket handling contract",
+              "ISessionManager - defines session management contract",
+              "IMessageRouter - defines message routing contract"
+            ],
+            "implementations": [
+              "StreamingWebSocketHandler - main WebSocket handler",
+              "SessionManager - manages WebSocket sessions",
+              "MessageRouter - routes messages to appropriate processors"
+            ],
+            "patterns": [
+              "Chain of Responsibility for message processing",
+              "Observer pattern for event distribution"
+            ]
+          },
+          "rationale": "Provides clean separation between WebSocket infrastructure and business logic"
+        },
+        "transcription_module": {
+          "purpose": "Handle speech-to-text functionality",
+          "components": {
+            "interfaces": [
+              "ITranscriptionService - defines transcription contract",
+              "ILanguageDetector - defines language detection contract",
+              "ITranscriptProcessor - defines transcript processing contract"
+            ],
+            "implementations": [
+              "AzureSpeechTranscriptionService - Azure Speech integration",
+              "MockTranscriptionService - for testing",
+              "LanguageDetectionService - detects spoken language",
+              "TranscriptAggregator - combines partial transcripts"
+            ],
+            "adapters": [
+              "AzureSpeechAdapter - adapts Azure SDK to our interfaces"
+            ]
+          },
+          "rationale": "Abstracts transcription functionality to enable easy provider switching"
+        },
+        "ai_module": {
+          "purpose": "Handle AI-powered response generation",
+          "components": {
+            "interfaces": [
+              "IAIService - defines AI service contract",
+              "IContextBuilder - defines context building contract",
+              "IResponseStreamer - defines response streaming contract"
+            ],
+            "implementations": [
+              "AzureOpenAIService - Azure OpenAI integration",
+              "ConversationContextBuilder - builds context from history",
+              "StreamingResponseProcessor - handles streamed responses"
+            ],
+            "strategies": [
+              "StreamingResponseStrategy - real-time token streaming",
+              "BatchResponseStrategy - complete response delivery"
+            ]
+          },
+          "rationale": "Provides flexible AI integration that can support multiple providers"
+        },
+        "persistence_module": {
+          "purpose": "Handle data persistence and retrieval",
+          "components": {
+            "interfaces": [
+              "ISessionRepository - session data access contract",
+              "IMessageRepository - message data access contract",
+              "IConversationSummarizer - conversation summarization contract"
+            ],
+            "implementations": [
+              "H2SessionRepository - H2 database session storage",
+              "H2MessageRepository - H2 database message storage",
+              "OpenAIConversationSummarizer - AI-powered summarization"
+            ],
+            "entities": [
+              "Session - session domain entity",
+              "Message - message domain entity"
+            ]
+          },
+          "rationale": "Abstracts data persistence to enable easy database switching"
+        },
+        "configuration_module": {
+          "purpose": "Handle application configuration and setup",
+          "components": {
+            "configurations": [
+              "WebSocketConfig - WebSocket endpoint setup",
+              "DatabaseConfig - database connection setup",
+              "AzureConfig - Azure service configuration",
+              "SecurityConfig - authentication and authorization"
+            ],
+            "validators": [
+              "ConfigurationValidator - validates configuration on startup"
+            ]
+          },
+          "rationale": "Centralizes configuration management and ensures proper setup"
+        }
+      }
+    },
+    "dependency_injection": {
+      "frontend_di": {
+        "container": "React Context + Custom Hooks",
+        "providers": [
+          "AudioServiceProvider - provides audio-related services",
+          "CommunicationServiceProvider - provides WebSocket services",
+          "ConversationServiceProvider - provides conversation services"
+        ],
+        "injection_strategy": "Constructor injection via custom hooks",
+        "rationale": "Enables easy testing and service replacement"
+      },
+      "backend_di": {
+        "container": "Spring Framework IoC Container",
+        "configuration": "Java-based configuration with @Configuration classes",
+        "injection_strategy": "Constructor injection (required) + Method injection (optional)",
+        "profiles": [
+          "development - with mock services and H2 database",
+          "production - with real Azure services and production database",
+          "test - with all mocked dependencies"
+        ],
+        "rationale": "Leverages Spring's mature DI container for enterprise-grade dependency management"
+      }
+    },
+    "error_handling_architecture": {
+      "error_classification": {
+        "recoverable_errors": {
+          "examples": [
+            "Network timeouts",
+            "Azure service rate limits",
+            "Temporary connection issues"
+          ],
+          "handling_strategy": "Automatic retry with exponential backoff",
+          "user_feedback": "Progress indicators and retry notifications"
+        },
+        "user_errors": {
+          "examples": [
+            "Microphone access denied",
+            "Invalid input format",
+            "Session expired"
+          ],
+          "handling_strategy": "Clear error messages with suggested actions",
+          "user_feedback": "Specific instructions for resolution"
+        },
+        "system_errors": {
+          "examples": [
+            "Configuration errors",
+            "Database connection failures",
+            "Memory exhaustion"
+          ],
+          "handling_strategy": "Graceful degradation and fallback mechanisms",
+          "user_feedback": "Generic error message with support contact"
+        }
+      },
+      "error_propagation": {
+        "strategy": "Fail-fast with structured error information",
+        "error_boundary": "React Error Boundaries for UI error isolation",
+        "error_context": "Include correlation IDs and contextual information",
+        "logging": "Structured logging with error classification and metrics"
+      }
+    },
+    "testing_architecture": {
+      "testing_pyramid": {
+        "unit_tests": {
+          "scope": "Individual classes and functions",
+          "tools": "Jest (frontend), JUnit 5 (backend)",
+          "coverage_target": "80%+",
+          "focus": "Business logic, algorithms, data transformations"
+        },
+        "integration_tests": {
+          "scope": "Module interactions and external service integration",
+          "tools": "React Testing Library (frontend), Spring Boot Test (backend)",
+          "coverage_target": "Key integration paths",
+          "focus": "API contracts, database operations, service integrations"
+        },
+        "end_to_end_tests": {
+          "scope": "Complete user workflows",
+          "tools": "Playwright",
+          "coverage_target": "Critical user journeys",
+          "focus": "User experience and system behavior"
+        }
+      },
+      "testing_patterns": {
+        "test_doubles": {
+          "mocks": "For external services (Azure, WebSocket)",
+          "stubs": "For simple return values",
+          "fakes": "For in-memory implementations"
+        },
+        "test_data_builders": "Builder pattern for test data creation",
+        "test_fixtures": "Reusable test setup and teardown"
+      }
+    },
+    "performance_architecture": {
+      "optimization_strategies": {
+        "frontend": {
+          "lazy_loading": "Component and route-based code splitting",
+          "memoization": "React.memo and useMemo for expensive calculations",
+          "virtual_scrolling": "For large conversation histories",
+          "audio_optimization": "Minimal buffering and efficient audio processing"
+        },
+        "backend": {
+          "async_processing": "Non-blocking I/O for all external calls",
+          "connection_pooling": "Optimized database and HTTP connection pools",
+          "caching": "In-memory caching for frequently accessed data",
+          "resource_management": "Proper cleanup of audio streams and connections"
+        }
+      },
+      "monitoring": {
+        "metrics": [
+          "Audio capture latency",
+          "Transcription response time",
+          "AI response time",
+          "WebSocket message throughput",
+          "Error rates by category"
+        ],
+        "alerting": "Threshold-based alerts for performance degradation",
+        "profiling": "Regular performance profiling to identify bottlenecks"
+      }
+    },
+    "security_architecture": {
+      "authentication": {
+        "mechanism": "API key validation (development) → OAuth2/JWT (production)",
+        "scope": "Session-based authentication with secure token storage",
+        "renewal": "Automatic token refresh with fallback mechanisms"
+      },
+      "authorization": {
+        "model": "Role-based access control",
+        "session_isolation": "Users can only access their own sessions",
+        "api_permissions": "Fine-grained permissions for different operations"
+      },
+      "data_protection": {
+        "encryption": "TLS for data in transit, optional encryption for data at rest",
+        "audio_handling": "No persistent audio storage, immediate processing and disposal",
+        "conversation_privacy": "Configurable data retention policies"
+      },
+      "input_validation": {
+        "client_side": "Basic validation for user experience",
+        "server_side": "Comprehensive validation and sanitization",
+        "api_contracts": "Strict schema validation for all API calls"
+      }
+    },
+    "deployment_architecture": {
+      "containerization": {
+        "strategy": "Multi-stage Docker builds for optimized image sizes",
+        "base_images": "Official Node.js and OpenJDK images",
+        "security": "Non-root users and minimal attack surface"
+      },
+      "orchestration": {
+        "development": "docker-compose for local development",
+        "production": "Kubernetes for scalable deployment",
+        "configuration": "Environment-based configuration management"
+      },
+      "scalability": {
+        "horizontal_scaling": "Stateless backend design for easy scaling",
+        "load_balancing": "Session affinity for WebSocket connections",
+        "database_scaling": "Read replicas and connection pooling"
+      }
+    }
+  }
+}

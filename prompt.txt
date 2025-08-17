@@ -1,0 +1,499 @@
+You are an expert full-stack engineer. Produce a complete, production-grade implementation (frontend + backend) that runs locally and uses Azure Speech Services + Azure OpenAI for real-time, low-latency voice Q&A with context memory. Include all code, config, instructions, and tests.
+
+0) Goal
+
+Build a real-time multilingual Q&A assistant that:
+
+Listens to live microphone audio in the browser.
+
+Streams audio to the backend via WebSocket.
+
+Uses Azure Speech Services for streaming transcription (and auto language detection + optional translation to English).
+
+Uses Azure OpenAI (Chat Completions with streaming) to generate context-aware answers.
+
+Streams the assistant’s tokens back to the browser in real time.
+
+Renders a modern, beautiful chat UI in Next.js.
+
+Maintains conversation memory (in-memory + H2 DB persistence).
+
+Handles edge cases: silence, disconnects, timeouts, network issues, multi-language, partial transcripts, retries, rate limits.
+
+1) Tech Stack
+
+Frontend: Next.js 14 (App Router), TypeScript, TailwindCSS, shadcn/ui, Framer Motion.
+
+Audio: Web Audio API (MediaDevices + MediaRecorder or AudioWorklet for ~100–200ms chunks).
+
+Transport: WebSocket (binary for audio chunks, JSON for control/events).
+
+Backend: Spring Boot 3 (Java 17+), Spring WebSocket, H2 DB, SLF4J logging.
+
+Azure:
+
+Azure Speech Services (streaming STT, auto language detect, partial & final results).
+
+Azure OpenAI (Chat Completions API with server-sent streaming).
+
+(Optional extension points: Azure Translator, Azure AI Search grounding — include stub services & comments, but not required to run.)
+
+Build/Run: Maven for backend; pnpm/npm for frontend; Dockerfiles for both; docker-compose for one-command local bring-up.
+
+2) High-Level Architecture
+
+Browser (Next.js)
+↔ WebSocket /ws/stream (Spring Boot)
+→ Spring sends audio frames to Azure Speech (streaming)
+→ Receives partial/final transcripts
+→ Streams transcript to Azure OpenAI (with conversation context)
+→ Streams assistant tokens back to browser through the same WS
+→ Persists messages in H2 (session scoped)
+→ On reconnect, resume session context
+
+Latency targets:
+
+Audio frame size: 100–200ms.
+
+STT partial results shown ASAP.
+
+First token from Azure OpenAI within ~500–900ms after finalizing a phrase.
+
+Stream tokens to UI as they arrive.
+
+3) Functional Requirements
+Frontend (Next.js)
+
+Pages/Routes: App Router with a main / chat page.
+
+UI:
+
+Minimal, modern layout with Tailwind + shadcn/ui cards/buttons/inputs.
+
+Chat bubbles (user left/right differentiation), timestamps, avatars.
+
+“Listening” indicator + waveform/mic pulse animation.
+
+Live transcript line updating with partial results; finalized lines locked.
+
+Assistant reply is token-streamed and animates in.
+
+Controls:
+
+Start/Stop recording, Push-to-talk (hold space), Mute, Clear chat.
+
+Language auto-detect toggle + manual source language dropdown.
+
+Target language dropdown (for translation in answers; default English).
+
+Reconnect button if WS drops; auto retry w/ exponential backoff.
+
+Status toasts/banners for mic permission errors, WS disconnects, backend errors.
+
+State:
+
+Local conversation state mirrored from backend events.
+
+Session ID persisted in localStorage to resume on refresh/reconnect.
+
+WS Protocol:
+
+Binary frames for audio (Float32Array or Int16 PCM); JSON for control:
+
+{"type":"start","sessionId":"...","targetLang":"en","autoDetect":true}
+
+{"type":"stop"}
+
+{"type":"userText","text":"..."} (fallback manual text input)
+
+{"type":"clear"} (new session)
+
+Incoming events (JSON):
+
+transcript.partial: { text, seq }
+
+transcript.final: { text, seq }
+
+assistant.delta: { token }
+
+assistant.done: { messageId }
+
+error: { code, message }
+
+session.ready: { sessionId }
+
+session.restored: { sessionId, history:[...] }
+
+Backend (Spring Boot)
+
+WebSocket endpoint /ws/stream:
+
+Accepts binary audio frames + JSON control messages.
+
+One logical session per WS connection; support session restore with provided sessionId.
+
+Azure Speech Service Client:
+
+Streaming audio ingestion; emit partial and final transcript events.
+
+Auto language detection (e.g., en-US, hi-IN, es-ES).
+
+Optional: If detected language != target, provide translated text (either via Speech translation or pass native transcript to GPT and prompt it to answer in target language).
+
+Azure OpenAI Client:
+
+Chat Completions streaming with system prompt enforcing behavior:
+
+“Answer concisely, cite facts when confident, ask clarifying Qs if ambiguous.”
+
+“Respond in the target language (default English) even if transcript is mixed-language.”
+
+“Use prior context from session memory.”
+
+Accept and append message history.
+
+Stream tokens back as they’re received.
+
+Storage (H2):
+
+Entities: Session, Message (id, sessionId, role: user/assistant, text, createdAt, tokensUsed).
+
+Persist final transcripts and assistant replies; ignore partials.
+
+TTL or size-based pruning for long sessions; add a scheduled summary step to compress history into short summaries after N turns.
+
+Session & Memory:
+
+Maintain in-memory buffer for last N turns, backed by H2 for persistence.
+
+On reconnect with existing sessionId, rebuild context from DB + in-memory buffer.
+
+4) Non-Functional & Edge Cases
+
+Silence detection:
+
+Client-side VAD (simple RMS threshold + duration) to skip sending silence.
+
+Server-side: if no voice activity in X seconds, pause STT stream; resume on next buffer.
+
+Overlapping speech / backpressure:
+
+Queue audio frames; drop if buffer exceeds threshold; notify frontend via error (overrun).
+
+Network drops:
+
+Client auto-reconnect with exponential backoff (up to N attempts).
+
+Server resumes session if sessionId provided.
+
+Rate limits & retries:
+
+Retry STT or Chat segment with exponential backoff.
+
+Debounce sending to LLM until a final transcript segment or VAD “phrase end”.
+
+Partial vs final:
+
+Stream transcript.partial frequently; send final when Azure marks it.
+
+Timeouts:
+
+STT inactivity timeout; LLM first-token timeout.
+
+Emit friendly error events with codes.
+
+Security (local dev):
+
+Backend validates a X-API-KEY header from frontend; configurable via env.
+
+CORS for WS origin.
+
+iOS/Safari quirks:
+
+Fallback recorder (MediaRecorder vs WebAudioWorklet).
+
+Manual text input fallback if mic denied.
+
+5) Configuration & Secrets
+
+Environment variables (Backend):
+
+AZURE_SPEECH_KEY, AZURE_SPEECH_REGION
+
+AZURE_OPENAI_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT (chat model name/deployment)
+
+TARGET_LANGUAGE (default en)
+
+APP_API_KEY (frontend → backend shared key)
+
+SERVER_WS_MAX_MSG_BYTES, H2_ENABLE (true/false)
+
+Environment variables (Frontend):
+
+NEXT_PUBLIC_WS_URL (e.g., ws://localhost:8080/ws/stream)
+
+NEXT_PUBLIC_TARGET_LANGUAGE (default en)
+
+Provide .env.example in both apps.
+
+6) Deliverables
+A) Full Backend (Spring Boot) project
+
+Dependencies: spring-websocket, spring-boot-starter-web, spring-boot-starter-validation, H2, Azure Speech SDK for Java, HTTP client (OkHttp/HttpClient), Jackson.
+
+Packages:
+
+config (App config, CORS, WS config, H2 config)
+
+ws (WebSocket handler)
+
+azure (SpeechService, OpenAIService)
+
+service (ConversationService, VadService, RateLimiter)
+
+repo (SessionRepository, MessageRepository)
+
+model (DTOs: events, messages)
+
+controller (health, session REST if needed)
+
+WebSocket Handler Flow:
+
+On start, create or restore session; init Azure Speech recognition stream.
+
+For binary audio frames, push to Azure Speech stream.
+
+On speech partial/final events → emit transcript.partial / transcript.final to client.
+
+On final transcript (phrase end), call Azure OpenAI streaming and relay tokens via assistant.delta and assistant.done. Persist final user+assistant pair.
+
+Handle userText events similarly (text-only path).
+
+H2 schema (JPA entities + schema.sql for clarity).
+
+Tests:
+
+Unit tests for ConversationService memory & summarization.
+
+Integration test for WS handler (mock Azure clients).
+
+Logging: Use SLF4J with request/session IDs.
+
+Dockerfile for backend.
+
+B) Full Frontend (Next.js 14) project
+
+App Router with app/page.tsx.
+
+UI stack: Tailwind configured, shadcn/ui installed, Framer Motion.
+
+Components:
+
+ChatWindow, MessageBubble, MicButton, Recorder, StatusBar, LanguageSelector
+
+WebSocket client service with reconnection & heartbeats.
+
+Recorder:
+
+Uses AudioWorklet if available; fallback to MediaRecorder.
+
+16 kHz mono PCM or Opus (match what backend expects; specify this explicitly).
+
+Streaming render:
+
+Partial transcript area (top) + committed messages list.
+
+Assistant tokens appended as they arrive.
+
+Styles: polished, modern (rounded-xl, soft shadows, subtle gradients).
+
+Dockerfile for frontend.
+
+Scripts: dev, build, start.
+
+C) docker-compose.yml
+
+Services: backend, frontend
+
+Networks and env injection
+
+One command to bring everything up: docker-compose up --build
+
+D) README.md
+
+Azure resource setup:
+
+Create Azure Speech resource (region, key).
+
+Create Azure OpenAI resource, deploy a chat model (e.g., gpt-4o or latest supported by Azure), get endpoint + deployment name.
+
+Local run (without Docker):
+
+Backend: mvn spring-boot:run
+
+Frontend: pnpm dev or npm run dev
+
+With Docker: docker-compose up --build
+
+Troubleshooting & known issues.
+
+7) Exact Interfaces & Message Formats
+
+WS URL: ws://localhost:8080/ws/stream
+
+Client → Server JSON Control Messages:
+
+// start/resume session
+{ "type":"start", "sessionId":"optional-string", "autoDetect":true, "targetLang":"en" }
+
+// stop capturing/close STT stream (keep session)
+{ "type":"stop" }
+
+// manual text input (when mic not used)
+{ "type":"userText", "text":"What is the capital of France?" }
+
+// clear session and start fresh
+{ "type":"clear" }
+
+
+Client → Server Audio Frames:
+
+Binary frames; specify in code & README the exact format chosen (e.g., 16-bit PCM little-endian, 16kHz, mono). Include utility to convert raw Float32 → Int16 PCM.
+
+Server → Client Events (JSON):
+
+{ "type":"session.ready", "sessionId":"abc123" }
+
+{ "type":"session.restored", "sessionId":"abc123", "history":[
+  {"role":"user","text":"...","createdAt":"..."},
+  {"role":"assistant","text":"...","createdAt":"..."}
+]}
+
+{ "type":"transcript.partial", "text":"par...", "seq": 17 }
+
+{ "type":"transcript.final", "text":"Paris", "seq": 18 }
+
+{ "type":"assistant.delta", "token":"The " }
+{ "type":"assistant.delta", "token":"capital " }
+{ "type":"assistant.delta", "token":"of France " }
+{ "type":"assistant.delta", "token":"is Paris." }
+
+{ "type":"assistant.done", "messageId":"m_12345" }
+
+{ "type":"error", "code":"stt_timeout", "message":"No speech detected" }
+
+8) System Prompt for Azure OpenAI
+
+Use a strict, compact system prompt:
+
+You are a real-time, low-latency assistant.
+- Answer concisely and correctly based on the latest user utterance and conversation history.
+- If the user is ambiguous, ask a brief clarifying question.
+- Always respond in the target language requested by the client (default: English).
+- If user mixes languages, interpret intent and answer in target language.
+- Be robust to partial/incorrect transcripts; wait for final transcript when needed.
+- Never invent APIs or facts. If unknown, say so briefly.
+
+
+Also attach tools/metadata (target language, detected language) in the first user message of each turn.
+
+9) Performance & Resource Handling
+
+Frame size ~100–200ms; send continuously while recording.
+
+Buffer limits on server (e.g., drop frames if >2s backlog; emit overrun error).
+
+Backoff strategy for reconnects (200ms → 500ms → 1s → 2s up to 10s).
+
+Compress conversation with summarization after N=12 turns.
+
+10) Testing
+
+Unit tests for:
+
+Conversation summarization & memory
+
+Session restore logic
+
+Integration tests:
+
+Mock Azure clients; simulate partial/final transcript flow and validate assistant streaming.
+
+Frontend e2e:
+
+Minimal Playwright test to verify:
+
+Connect WS
+
+Send mock assistant.delta stream
+
+UI renders tokens progressively
+
+11) Code Organization & File Paths
+
+Produce the full repo with this structure (include all files):
+
+/app
+  /backend
+    pom.xml
+    Dockerfile
+    src/main/java/com/example/voiceqa/...
+    src/main/resources/application.yml
+    src/main/resources/schema.sql
+    src/test/java/com/example/voiceqa/...
+  /frontend
+    package.json
+    pnpm-lock.yaml (or package-lock.json)
+    Dockerfile
+    next.config.js
+    postcss.config.js
+    tailwind.config.ts
+    /app/page.tsx
+    /app/globals.css
+    /components/*.tsx
+    /lib/wsClient.ts
+    /lib/recorder.ts
+    .env.example
+/docker-compose.yml
+/README.md
+
+
+Important: Include actual working code for:
+
+WebSocket handler (Spring).
+
+Azure Speech streaming client usage (Java SDK) with partial/final callbacks wired to WS.
+
+Azure OpenAI streaming chat (SSE) with token-by-token relay.
+
+Next.js audio capture & binary WS frames (with a documented PCM format).
+
+Reconnect logic, toasts, session restore, and beautiful UI.
+
+12) Acceptance Criteria
+
+docker-compose up --build launches both services.
+
+Navigating to http://localhost:3000/ shows the chat UI.
+
+Clicking Start begins listening; partial transcript appears quickly.
+
+When you pause speaking, the assistant reply starts streaming back token by token.
+
+Refreshing the page restores the session history.
+
+H2 console enabled in dev to inspect messages.
+
+Clear, working README with Azure setup steps and local run instructions.
+
+13) Nice-to-Have (Add if time permits)
+
+Toggle for push-to-talk mode (hold Space).
+
+Waveform visualizer (Canvas) synced with mic input level.
+
+Language selector (auto vs specific locale list).
+
+UI theme toggle (light/dark).
+
+Hook points (commented) to integrate Azure AI Search for RAG grounding.

@@ -1,0 +1,43 @@
+# Test environment configuration
+# Why: Configuration for running tests with in-memory database
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  
+  h2:
+    console:
+      enabled: false
+  
+  # Disable security for testing
+  security:
+    enabled: false
+
+# Use mock services for testing and fast timeouts
+app:
+  mock-services:
+    enabled: true
+    transcription:
+      delay-ms: 10
+      error-rate: 0
+    ai:
+      delay-ms: 10
+      tokens-per-second: 100
+  # Fast timeouts for testing
+  session:
+    timeout: 1
+    cleanup-interval: 1
+  websocket:
+    heartbeat-interval: 1
+    connection-timeout: 5
+
+logging:
+  level:
+    root: WARN
+    com.interview.assistant: INFO

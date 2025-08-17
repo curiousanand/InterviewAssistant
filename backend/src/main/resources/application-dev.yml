@@ -1,0 +1,39 @@
+# Development environment configuration
+# Why: Development-specific settings with debugging enabled
+
+spring:
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop  # Recreate schema on each restart
+  
+  h2:
+    console:
+      enabled: true
+      settings:
+        web-allow-others: true  # Allow remote H2 console access in dev
+
+# Verbose logging for development
+logging:
+  level:
+    com.interview.assistant: TRACE
+    org.springframework.web: DEBUG
+    org.springframework.websocket: TRACE
+
+# Mock services for development without Azure
+app:
+  mock-services:
+    enabled: true
+    transcription:
+      delay-ms: 500
+      error-rate: 0.05
+    ai:
+      delay-ms: 1000
+      tokens-per-second: 10
+
+# Disable security for easier development
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"

@@ -1,0 +1,551 @@
+{
+  "product": {
+    "name": "Interview Assistant",
+    "version": "1.0.0",
+    "description": "Real-time multilingual Q&A assistant with voice input and AI-powered responses",
+    "type": "Voice AI Application"
+  },
+  "overview": {
+    "goal": "Build a real-time multilingual Q&A assistant that listens to live microphone audio, uses Azure Speech Services for transcription, and Azure OpenAI for context-aware responses with streaming delivery",
+    "target_users": [
+      "Interviewers conducting multilingual interviews",
+      "Professionals needing real-time voice assistance",
+      "Researchers requiring voice-to-text Q&A capabilities"
+    ],
+    "key_value_propositions": [
+      "Real-time voice transcription with sub-second latency",
+      "Multi-language support with auto-detection",
+      "Context-aware AI responses with conversation memory",
+      "Beautiful, modern web interface",
+      "Robust error handling and reconnection capabilities"
+    ]
+  },
+  "functional_requirements": {
+    "modular_architecture": {
+      "design_principles": [
+        "Single Responsibility: Each module has one clear purpose",
+        "Open/Closed: Extensible without modification of existing code",
+        "Liskov Substitution: Implementations are interchangeable",
+        "Interface Segregation: Focused, minimal interfaces",
+        "Dependency Inversion: Depend on abstractions, not concretions"
+      ],
+      "module_boundaries": [
+        "Audio Module: Audio capture, processing, and VAD",
+        "Communication Module: WebSocket client and message handling",
+        "Conversation Module: State management and history",
+        "Transcription Module: Speech-to-text abstraction and providers",
+        "AI Module: Response generation and streaming",
+        "Persistence Module: Data storage and retrieval"
+      ]
+    },
+    "core_features": {
+      "audio_processing_module": {
+        "description": "Modular audio capture and processing system",
+        "components": {
+          "audio_capture": {
+            "interface": "IAudioCapture",
+            "implementations": ["AudioWorkletCapture", "MediaRecorderCapture"],
+            "factory": "AudioCaptureFactory with browser detection",
+            "rationale": "Abstracts audio capture to support different browser APIs"
+          },
+          "audio_processing": {
+            "interface": "IAudioProcessor", 
+            "implementations": ["RealtimeAudioProcessor", "BatchAudioProcessor"],
+            "strategies": ["ContinuousRecording", "PushToTalk", "VoiceActivated"],
+            "rationale": "Separates processing logic from capture mechanism"
+          },
+          "voice_activity_detection": {
+            "interface": "IVoiceActivityDetector",
+            "implementations": ["SimpleVAD", "AdvancedVAD"],
+            "rationale": "Enables different VAD algorithms without changing client code"
+          }
+        },
+        "requirements": [
+          "Continuous audio capture from browser microphone",
+          "Audio streaming via WebSocket in 100-200ms chunks",
+          "Support for multiple recording strategies (continuous, push-to-talk, voice-activated)",
+          "Pluggable Voice Activity Detection algorithms",
+          "Graceful fallback between capture methods",
+          "Automatic format conversion for different backends"
+        ],
+        "acceptance_criteria": [
+          "Audio capture starts within 500ms of clicking record",
+          "Audio frames are sent continuously with <200ms latency",
+          "Silence periods are detected and not transmitted (when VAD enabled)",
+          "Fallback to MediaRecorder works automatically when AudioWorklet unavailable",
+          "Recording strategy can be changed without restarting capture",
+          "Manual text input works when microphone is denied"
+        ]
+      },
+      "transcription_module": {
+        "description": "Modular speech-to-text system with provider abstraction",
+        "components": {
+          "transcription_service": {
+            "interface": "ITranscriptionService",
+            "implementations": ["AzureSpeechServiceAdapter", "GoogleSpeechAdapter", "MockTranscriptionService"],
+            "factory": "TranscriptionServiceFactory with provider selection",
+            "rationale": "Enables easy switching between transcription providers"
+          },
+          "language_detection": {
+            "interface": "ILanguageDetector",
+            "implementations": ["AzureLanguageDetector", "LocalLanguageDetector"],
+            "rationale": "Abstracts language detection for different providers"
+          },
+          "transcript_processing": {
+            "interface": "ITranscriptProcessor",
+            "implementations": ["RealtimeTranscriptProcessor", "BatchTranscriptProcessor"],
+            "rationale": "Handles transcript aggregation and formatting"
+          }
+        },
+        "requirements": [
+          "Streaming speech-to-text with partial and final results",
+          "Pluggable transcription providers (Azure, Google, etc.)",
+          "Automatic language detection with fallback mechanisms",
+          "Support for multiple languages with provider-specific handling",
+          "Optional translation to target language",
+          "Robust handling of partial transcripts and corrections",
+          "Provider failover and error recovery"
+        ],
+        "acceptance_criteria": [
+          "Partial transcripts appear within 300ms of speech",
+          "Final transcripts are accurate and properly formatted",
+          "Language detection works for all supported providers",
+          "Provider switching works without service interruption",
+          "Translation maintains context and meaning",
+          "Graceful degradation when primary provider fails"
+        ]
+      },
+      "ai_response_module": {
+        "description": "Modular AI response generation with provider abstraction",
+        "components": {
+          "ai_service": {
+            "interface": "IAIService",
+            "implementations": ["AzureOpenAIServiceAdapter", "OpenAIServiceAdapter", "MockAIService"],
+            "factory": "AIServiceFactory with provider and model selection",
+            "rationale": "Enables switching between AI providers and models"
+          },
+          "response_strategy": {
+            "interface": "IResponseDeliveryStrategy",
+            "implementations": ["StreamingResponseStrategy", "BatchResponseStrategy", "CachedResponseStrategy"],
+            "rationale": "Optimizes response delivery based on context and network conditions"
+          },
+          "context_builder": {
+            "interface": "IContextBuilder",
+            "implementations": ["ConversationContextBuilder", "SummarizedContextBuilder"],
+            "rationale": "Manages conversation context for different use cases"
+          },
+          "prompt_manager": {
+            "interface": "IPromptManager",
+            "implementations": ["SystemPromptManager", "DynamicPromptManager"],
+            "rationale": "Manages system prompts and prompt optimization"
+          }
+        },
+        "requirements": [
+          "Context-aware responses using conversation history",
+          "Token-by-token streaming for real-time display",
+          "Support for multiple AI providers (Azure OpenAI, OpenAI, etc.)",
+          "Multiple response delivery strategies",
+          "Dynamic prompt management and optimization",
+          "Support for multiple target languages",
+          "Concise, accurate, and helpful responses",
+          "Proper handling of ambiguous questions",
+          "Rate limiting and quota management",
+          "Provider failover and error recovery"
+        ],
+        "acceptance_criteria": [
+          "First token appears within 500-900ms after final transcript",
+          "Responses stream smoothly token by token",
+          "Conversation context is maintained across sessions",
+          "Provider switching works seamlessly",
+          "Different response strategies can be selected at runtime",
+          "Rate limits are respected with graceful degradation",
+          "Responses are relevant and accurate across all providers"
+        ]
+      },
+      "conversation_management_module": {
+        "description": "Modular conversation state and history management",
+        "components": {
+          "conversation_service": {
+            "interface": "IConversationService",
+            "implementations": ["DefaultConversationService", "DistributedConversationService"],
+            "rationale": "Manages conversation state with different scaling strategies"
+          },
+          "memory_manager": {
+            "interface": "IMemoryManager",
+            "implementations": ["InMemoryManager", "HybridMemoryManager", "DistributedMemoryManager"],
+            "rationale": "Provides different memory management strategies"
+          },
+          "session_repository": {
+            "interface": "ISessionRepository",
+            "implementations": ["H2SessionRepository", "PostgreSQLSessionRepository", "InMemorySessionRepository"],
+            "rationale": "Abstracts session persistence for different storage backends"
+          },
+          "conversation_summarizer": {
+            "interface": "IConversationSummarizer",
+            "implementations": ["AIConversationSummarizer", "RuleBasedSummarizer"],
+            "rationale": "Provides different summarization strategies"
+          }
+        },
+        "requirements": [
+          "In-memory conversation buffer for recent turns with configurable size",
+          "Pluggable persistence backends (H2, PostgreSQL, etc.)",
+          "Session restoration on reconnection with full context",
+          "Automatic conversation summarization for long sessions",
+          "Configurable memory limits and TTL policies",
+          "Distributed session management for horizontal scaling",
+          "Session analytics and metrics collection"
+        ],
+        "acceptance_criteria": [
+          "Conversation history persists across browser refreshes",
+          "Sessions can be restored using session ID with full context",
+          "Long conversations are automatically summarized without losing important context",
+          "Memory usage stays within defined limits across all implementations",
+          "Storage backend can be switched without data loss",
+          "Session metrics are collected for analysis"
+        ]
+      },
+      "user_interface_module": {
+        "description": "Modular, component-based user interface system",
+        "components": {
+          "smart_components": {
+            "components": ["ChatContainer", "RecordingController", "ConversationManager"],
+            "rationale": "Handle business logic and state management"
+          },
+          "presentational_components": {
+            "components": ["MessageBubble", "TranscriptDisplay", "StatusIndicator", "LanguageSelector"],
+            "rationale": "Pure UI components for better testability and reusability"
+          },
+          "custom_hooks": {
+            "hooks": ["useConversation", "useRecording", "useWebSocket", "useAudioProcessor"],
+            "rationale": "Encapsulate complex state logic and side effects"
+          },
+          "context_providers": {
+            "providers": ["AudioServiceProvider", "CommunicationServiceProvider", "ConversationServiceProvider"],
+            "rationale": "Provide dependency injection for React components"
+          }
+        },
+        "requirements": [
+          "Component-based architecture with clear separation of concerns",
+          "Chat bubble interface with user/assistant differentiation",
+          "Live transcript display with smooth partial updates",
+          "Recording status indicators with engaging animations",
+          "Intuitive language selection controls",
+          "Real-time connection status and error notifications",
+          "Mobile-responsive design with touch optimization",
+          "Accessibility compliance (WCAG 2.1 AA)",
+          "Dark/light theme support",
+          "Keyboard shortcuts for power users"
+        ],
+        "acceptance_criteria": [
+          "UI updates smoothly without lag during streaming (60fps)",
+          "All controls are intuitive and accessible to screen readers",
+          "Visual feedback for all user actions within 100ms",
+          "Responsive design works perfectly on mobile and desktop",
+          "Component isolation enables independent testing",
+          "Theme switching works without layout shifts",
+          "Keyboard navigation covers all functionality"
+        ]
+      }
+    },
+    "cross_cutting_concerns": {
+      "communication_module": {
+        "description": "WebSocket communication with robust error handling",
+        "components": {
+          "websocket_client": {
+            "interface": "IWebSocketClient",
+            "implementations": ["ReconnectingWebSocketClient", "SimpleWebSocketClient"],
+            "rationale": "Abstracts WebSocket communication for testing and flexibility"
+          },
+          "message_handler": {
+            "interface": "IMessageHandler",
+            "implementations": ["AudioMessageHandler", "TextMessageHandler", "ControlMessageHandler"],
+            "pattern": "Chain of Responsibility for message processing",
+            "rationale": "Provides flexible message processing pipeline"
+          },
+          "connection_manager": {
+            "interface": "IConnectionManager",
+            "implementations": ["ExponentialBackoffConnectionManager", "LinearBackoffConnectionManager"],
+            "rationale": "Manages connection lifecycle and reconnection strategies"
+          }
+        },
+        "requirements": [
+          "Reliable WebSocket communication with automatic reconnection",
+          "Message queuing during disconnection periods",
+          "Exponential backoff reconnection strategy",
+          "Binary and JSON message support",
+          "Connection state management and monitoring",
+          "Heartbeat mechanism for connection validation"
+        ]
+      },
+      "session_management": {
+        "description": "Modular session lifecycle management",
+        "components": {
+          "session_manager": {
+            "interface": "ISessionManager",
+            "implementations": ["LocalSessionManager", "DistributedSessionManager"],
+            "rationale": "Manages session lifecycle with different scaling strategies"
+          },
+          "session_factory": {
+            "interface": "ISessionFactory",
+            "implementations": ["DefaultSessionFactory", "SecureSessionFactory"],
+            "rationale": "Creates sessions with different security and configuration requirements"
+          }
+        },
+        "requirements": [
+          "Automatic session creation on first connection",
+          "Secure session ID generation and validation",
+          "Session restoration with complete conversation history",
+          "Configurable session cleanup and archival policies",
+          "Multiple concurrent session support per user",
+          "Session analytics and monitoring"
+        ]
+      },
+      "error_handling": {
+        "description": "Comprehensive error handling and recovery",
+        "requirements": [
+          "WebSocket reconnection with exponential backoff",
+          "Azure service failure handling and retries",
+          "Network timeout and interruption recovery",
+          "Rate limiting and quota management",
+          "User-friendly error messages and recovery options"
+        ]
+      },
+      "multi_language_support": {
+        "description": "Support for multiple languages and translations",
+        "requirements": [
+          "Auto-detection of input language",
+          "Manual language selection override",
+          "Translation between source and target languages",
+          "Language-specific UI adaptations",
+          "RTL language support (future enhancement)"
+        ]
+      }
+    }
+  },
+  "non_functional_requirements": {
+    "performance": {
+      "latency": {
+        "audio_frame_size": "100-200ms chunks",
+        "stt_partial_results": "<300ms from speech",
+        "first_ai_token": "500-900ms after final transcript",
+        "ui_updates": "<100ms for smooth streaming"
+      },
+      "throughput": {
+        "concurrent_sessions": "100+ simultaneous users",
+        "audio_bandwidth": "16kHz mono PCM (32kbps)",
+        "websocket_messages": "10+ messages/second per session"
+      },
+      "scalability": {
+        "horizontal_scaling": "Stateless backend design for load balancing",
+        "database_performance": "Optimized queries for conversation history",
+        "azure_service_limits": "Proper rate limiting and quota management"
+      }
+    },
+    "reliability": {
+      "availability": "99.9% uptime for local deployment",
+      "error_recovery": "Automatic reconnection and session restoration",
+      "data_persistence": "Conversation history survives service restarts",
+      "graceful_degradation": "Fallback modes for service failures"
+    },
+    "security": {
+      "authentication": "API key validation between frontend and backend",
+      "data_privacy": "No persistent storage of audio data",
+      "secure_communication": "WebSocket over secure connections in production",
+      "input_validation": "Proper sanitization of all user inputs"
+    },
+    "usability": {
+      "accessibility": "WCAG 2.1 AA compliance for core features",
+      "internationalization": "Support for multiple UI languages",
+      "mobile_support": "Responsive design for mobile devices",
+      "browser_compatibility": "Modern browsers (Chrome, Firefox, Safari, Edge)"
+    }
+  },
+  "technical_specifications": {
+    "technology_stack": {
+      "frontend": {
+        "framework": "Next.js 14 with App Router",
+        "language": "TypeScript",
+        "styling": "TailwindCSS with shadcn/ui components",
+        "animations": "Framer Motion for smooth transitions",
+        "audio": "Web Audio API with MediaRecorder/AudioWorklet"
+      },
+      "backend": {
+        "framework": "Spring Boot 3",
+        "language": "Java 17+",
+        "websocket": "Spring WebSocket support",
+        "database": "H2 in-memory/file database",
+        "logging": "SLF4J with structured logging"
+      },
+      "cloud_services": {
+        "speech": "Azure Speech Services (Speech-to-Text)",
+        "ai": "Azure OpenAI (Chat Completions API)",
+        "future_extensions": "Azure Translator, Azure AI Search"
+      },
+      "deployment": {
+        "containerization": "Docker containers for both services",
+        "orchestration": "docker-compose for local development",
+        "build_tools": "Maven for backend, pnpm/npm for frontend"
+      }
+    },
+    "protocols_and_apis": {
+      "websocket_protocol": {
+        "endpoint": "ws://localhost:8080/ws/stream",
+        "binary_frames": "Audio data (16-bit PCM, 16kHz, mono)",
+        "json_messages": "Control messages and events",
+        "message_types": [
+          "start", "stop", "userText", "clear",
+          "session.ready", "session.restored",
+          "transcript.partial", "transcript.final",
+          "assistant.delta", "assistant.done",
+          "error"
+        ]
+      },
+      "rest_apis": {
+        "health_check": "GET /api/health",
+        "session_management": "GET/POST /api/sessions",
+        "h2_console": "GET /h2-console (development only)"
+      }
+    },
+    "data_models": {
+      "session": {
+        "fields": ["id", "createdAt", "lastAccessedAt", "targetLanguage", "autoDetect"],
+        "relationships": "One-to-many with messages"
+      },
+      "message": {
+        "fields": ["id", "sessionId", "role", "text", "createdAt", "tokensUsed"],
+        "indexes": ["sessionId", "createdAt"]
+      }
+    }
+  },
+  "user_stories": {
+    "primary_workflows": [
+      {
+        "title": "Start Voice Conversation",
+        "story": "As a user, I want to click a record button and immediately start speaking so that my voice is transcribed in real-time",
+        "acceptance_criteria": [
+          "Record button is prominently displayed and accessible",
+          "Clicking record requests microphone permissions if needed",
+          "Visual indicator shows recording is active",
+          "Partial transcripts appear as I speak"
+        ]
+      },
+      {
+        "title": "Receive AI Responses",
+        "story": "As a user, I want to receive intelligent responses to my questions that stream in real-time and consider our conversation history",
+        "acceptance_criteria": [
+          "AI responses start appearing within 1 second of finishing speaking",
+          "Responses stream token by token for natural reading",
+          "Previous conversation context influences responses",
+          "Responses are relevant and accurate"
+        ]
+      },
+      {
+        "title": "Multi-language Support",
+        "story": "As a user, I want to speak in my native language and receive responses in my preferred language",
+        "acceptance_criteria": [
+          "System automatically detects my spoken language",
+          "I can manually select both input and output languages",
+          "Translations maintain context and meaning",
+          "Language settings persist across sessions"
+        ]
+      },
+      {
+        "title": "Session Continuity",
+        "story": "As a user, I want my conversation to continue seamlessly even if my connection is interrupted",
+        "acceptance_criteria": [
+          "Conversation history is preserved during disconnections",
+          "Automatic reconnection attempts with visual feedback",
+          "Session restoration when I refresh the browser",
+          "No loss of conversation context"
+        ]
+      }
+    ],
+    "edge_cases": [
+      {
+        "title": "Handle Connection Issues",
+        "story": "As a user, I want clear feedback when there are connection problems and automatic recovery when possible",
+        "acceptance_criteria": [
+          "Clear error messages for different types of failures",
+          "Automatic retry with exponential backoff",
+          "Manual reconnect option when auto-retry fails",
+          "Graceful degradation to text-only mode if needed"
+        ]
+      },
+      {
+        "title": "Manage Long Conversations",
+        "story": "As a user, I want to have extended conversations without performance degradation",
+        "acceptance_criteria": [
+          "Conversation history is automatically summarized when too long",
+          "Response times remain consistent regardless of history length",
+          "Option to clear conversation and start fresh",
+          "Memory usage stays within acceptable limits"
+        ]
+      }
+    ]
+  },
+  "success_metrics": {
+    "performance_kpis": [
+      "Average time from speech end to first AI token: <900ms",
+      "Partial transcript latency: <300ms",
+      "UI responsiveness during streaming: <100ms frame time",
+      "Session restoration success rate: >99%",
+      "Audio capture reliability: >99.5%"
+    ],
+    "quality_metrics": [
+      "Transcription accuracy: >95% for clear speech",
+      "Language detection accuracy: >90%",
+      "AI response relevance score: >4.0/5.0",
+      "User satisfaction rating: >4.2/5.0"
+    ],
+    "reliability_metrics": [
+      "WebSocket connection uptime: >99%",
+      "Successful reconnection rate: >95%",
+      "Error recovery success rate: >90%",
+      "Zero data loss during normal operations"
+    ]
+  },
+  "constraints_and_assumptions": {
+    "technical_constraints": [
+      "Browser microphone access required for core functionality",
+      "Azure Speech Services regional availability",
+      "Azure OpenAI rate limits and quotas",
+      "WebSocket connection limits for concurrent users",
+      "Local H2 database for development (not production-scale)"
+    ],
+    "business_constraints": [
+      "Azure service costs scale with usage",
+      "Offline functionality not supported",
+      "Real-time processing requires stable internet connection",
+      "Audio data privacy - no long-term audio storage"
+    ],
+    "assumptions": [
+      "Users have modern browsers with WebSocket support",
+      "Microphone access will be granted by users",
+      "Azure services will maintain advertised SLAs",
+      "Primary use case is structured conversations, not ambient listening"
+    ]
+  },
+  "future_enhancements": {
+    "phase_2_features": [
+      "Azure AI Search integration for grounded responses",
+      "Voice synthesis for AI responses (text-to-speech)",
+      "Advanced analytics and conversation insights",
+      "Custom vocabulary and domain-specific training",
+      "Integration with external knowledge bases"
+    ],
+    "scalability_improvements": [
+      "Redis for distributed session management",
+      "Production database (PostgreSQL/MongoDB)",
+      "Load balancing and horizontal scaling",
+      "CDN integration for global deployment",
+      "Advanced monitoring and observability"
+    ],
+    "user_experience_enhancements": [
+      "Waveform visualization during recording",
+      "Keyboard shortcuts and accessibility improvements",
+      "Dark/light theme toggle",
+      "Conversation export and sharing",
+      "Custom AI assistant personalities"
+    ]
+  }
+}

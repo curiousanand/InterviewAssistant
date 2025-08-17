@@ -1,0 +1,422 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-08-17T15:55:00.000Z",
+  "__export_source": "insomnia.desktop.app:v8.6.1",
+  "resources": [
+    {
+      "_id": "req_health_actuator",
+      "parentId": "fld_health",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/actuator/health",
+      "name": "Health Check (Actuator)",
+      "description": "Spring Boot Actuator health endpoint",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279300000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_status",
+      "parentId": "fld_health",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/api/v1/status",
+      "name": "Application Status",
+      "description": "Custom application status endpoint",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279290000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_capabilities",
+      "parentId": "fld_health",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/api/v1/capabilities",
+      "name": "Service Capabilities",
+      "description": "Get available service capabilities",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279280000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_create_session",
+      "parentId": "fld_sessions",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/api/v1/sessions",
+      "name": "Create Session",
+      "description": "Create a new interview session",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"targetLanguage\": \"en-US\",\n  \"autoDetect\": true\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279270000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_create_session_minimal",
+      "parentId": "fld_sessions",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/api/v1/sessions",
+      "name": "Create Session (Minimal)",
+      "description": "Create session with default settings",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279260000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_session",
+      "parentId": "fld_sessions",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/api/v1/sessions/{{ _.session_id }}",
+      "name": "Get Session",
+      "description": "Retrieve session details by ID",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279250000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_close_session",
+      "parentId": "fld_sessions",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/api/v1/sessions/{{ _.session_id }}/close",
+      "name": "Close Session",
+      "description": "Close an active session",
+      "method": "POST",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279240000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_actuator_info",
+      "parentId": "fld_actuator",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/actuator/info",
+      "name": "Application Info",
+      "description": "Application information",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279230000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_actuator_metrics",
+      "parentId": "fld_actuator",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/actuator/metrics",
+      "name": "Application Metrics",
+      "description": "Application metrics overview",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279220000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_h2_console",
+      "parentId": "fld_database",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "{{ _.base_url }}/h2-console",
+      "name": "H2 Database Console",
+      "description": "Access H2 database console (browser only)",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "text/html"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1692279210000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_health",
+      "parentId": "wrk_interview_assistant",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "name": "Health & Status",
+      "description": "Health check and status endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1692279300000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_sessions",
+      "parentId": "wrk_interview_assistant",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "name": "Session Management",
+      "description": "Session lifecycle management endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1692279290000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_actuator",
+      "parentId": "wrk_interview_assistant",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "name": "Spring Actuator",
+      "description": "Spring Boot Actuator monitoring endpoints",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1692279280000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_database",
+      "parentId": "wrk_interview_assistant",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "name": "Database",
+      "description": "Database access and management",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1692279270000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "fld_websocket",
+      "parentId": "wrk_interview_assistant",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "name": "WebSocket",
+      "description": "WebSocket connection information",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1692279260000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "req_websocket_info",
+      "parentId": "fld_websocket",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "url": "Note: WebSocket endpoint is at ws://{{ _.base_host }}/ws/stream",
+      "name": "WebSocket Endpoint Info",
+      "description": "WebSocket connection details - use WebSocket client to connect to ws://localhost:8080/ws/stream",
+      "method": "GET",
+      "body": {
+        "mimeType": "text/plain",
+        "text": "WebSocket Endpoint: ws://localhost:8080/ws/stream\n\nMessage Types Supported:\n- AUDIO_DATA: Send audio chunks for transcription\n- SESSION_START: Initialize a session\n- SESSION_END: Close a session\n- HEARTBEAT: Keep connection alive\n- PING/PONG: Connection health check\n\nSample WebSocket Messages:\n\n1. Session Start:\n{\n  \"type\": \"SESSION_START\",\n  \"sessionId\": \"uuid-here\",\n  \"payload\": {\n    \"language\": \"en-US\",\n    \"audioFormat\": \"PCM\"\n  }\n}\n\n2. Audio Data:\n{\n  \"type\": \"AUDIO_DATA\",\n  \"sessionId\": \"uuid-here\",\n  \"payload\": \"base64-encoded-audio-data\"\n}\n\n3. Heartbeat:\n{\n  \"type\": \"HEARTBEAT\",\n  \"sessionId\": \"uuid-here\",\n  \"payload\": null\n}"
+      },
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1692279200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "wrk_interview_assistant",
+      "parentId": null,
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "name": "Interview Assistant Backend",
+      "description": "API collection for Interview Assistant backend services",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_base",
+      "parentId": "wrk_interview_assistant",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:8080",
+        "base_host": "localhost:8080",
+        "session_id": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url",
+          "base_host", 
+          "session_id"
+        ]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1692279300000,
+      "_type": "environment"
+    },
+    {
+      "_id": "jar_cookies",
+      "parentId": "wrk_interview_assistant",
+      "modified": 1692279300000,
+      "created": 1692279300000,
+      "name": "Default Jar",
+      "cookies": [],
+      "_type": "cookie_jar"
+    }
+  ]
+}
