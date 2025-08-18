@@ -90,6 +90,21 @@ const nextConfig = {
       };
     }
     
+    // Exclude test files from production build
+    if (!dev) {
+      config.module.rules.push({
+        test: /\.(test|spec)\.(js|jsx|ts|tsx)$/,
+        loader: 'ignore-loader',
+      });
+      
+      // Ignore __tests__ directory in production
+      config.plugins.push(
+        new webpack.IgnorePlugin({
+          resourceRegExp: /^\.?\/?__tests__/,
+        })
+      );
+    }
+    
     return config;
   },
   

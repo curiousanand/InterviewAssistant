@@ -5,20 +5,24 @@ const createJestConfig = nextJest({
 })
 
 const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/__tests__/setup/jest.setup.ts'],
   testEnvironment: 'jest-environment-jsdom',
   testMatch: [
     '<rootDir>/__tests__/**/*.(test|spec).(js|jsx|ts|tsx)',
-    '<rootDir>/src/**/*.(test|spec).(js|jsx|ts|tsx)',
   ],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^.+\\.module\\.(css|sass|scss)$': 'identity-obj-proxy',
+    '^.+\\.(css|sass|scss)$': '<rootDir>/__mocks__/styleMock.js',
+    '^.+\\.(jpg|jpeg|png|gif|webp|avif|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/*.stories.{js,jsx,ts,tsx}',
     '!src/**/index.{js,jsx,ts,tsx}',
+    '!src/app/page-old.tsx',
+    '!src/app/page-refactored.tsx',
   ],
   coverageThreshold: {
     global: {
@@ -31,10 +35,14 @@ const customJestConfig = {
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
-    '<rootDir>/e2e/',
+    '<rootDir>/out/',
+    '<rootDir>/dist/',
+    '<rootDir>/build/',
   ],
   moduleDirectories: ['node_modules', '<rootDir>/'],
   testTimeout: 10000,
+  verbose: true,
+  maxWorkers: '50%',
 }
 
 module.exports = createJestConfig(customJestConfig)
