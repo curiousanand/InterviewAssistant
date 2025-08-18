@@ -5,7 +5,8 @@
       "Bash(touch:*)",
       "Bash(npx playwright test:*)",
       "Bash(npx playwright:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(true)"
     ],
     "deny": [],
     "ask": []

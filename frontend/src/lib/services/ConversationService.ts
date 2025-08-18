@@ -298,10 +298,12 @@ export class ConversationService {
    * Handle assistant response delta (streaming)
    */
   private handleAssistantDelta(message: WebSocketMessage): void {
-    const delta = message.payload as string;
+    // Backend sends {text: "..."} object, extract the text
+    const payload = message.payload as { text: string };
+    const delta = payload?.text || '';
     this.currentAssistantResponse += delta;
     
-    console.log('Assistant delta:', delta);
+    console.log('Assistant delta:', payload);
     
     if (this.onAssistantResponse) {
       this.onAssistantResponse(this.currentAssistantResponse, false);
@@ -312,7 +314,9 @@ export class ConversationService {
    * Handle assistant response completion
    */
   private handleAssistantComplete(message: WebSocketMessage): void {
-    const fullResponse = message.payload as string;
+    // Backend sends {text: "..."} object, extract the text
+    const payload = message.payload as { text: string };
+    const fullResponse = this.currentAssistantResponse; // Use accumulated response
     
     // Add assistant message to conversation
     const assistantMessage: Message = {
@@ -325,7 +329,7 @@ export class ConversationService {
     this.messages.push(assistantMessage);
     this.currentAssistantResponse = '';
     
-    console.log('Assistant response complete:', fullResponse);
+    console.log('Assistant response complete:', payload);
     
     if (this.onMessagesChange) {
       this.onMessagesChange([...this.messages]);

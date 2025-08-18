@@ -100,13 +100,20 @@ export class AudioStreamingService {
     }
 
     if (this.recordingState.isRecording) {
-      console.warn('Recording is already active, resetting state...');
-      // Reset the recording state and try again
-      this.updateRecordingState({ 
-        isRecording: false, 
-        isProcessing: false,
-        error: null 
-      });
+      console.warn('Recording is already active, stopping previous recording...');
+      try {
+        await this.stopRecording();
+        // Wait a brief moment for cleanup
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.warn('Error stopping previous recording:', error);
+        // Force reset the state
+        this.updateRecordingState({ 
+          isRecording: false, 
+          isProcessing: false,
+          error: null 
+        });
+      }
     }
 
     try {

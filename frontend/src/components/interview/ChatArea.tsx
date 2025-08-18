@@ -30,8 +30,8 @@ export function ChatArea({
   const hasContent = messages.length > 0 || currentTranscript || currentAssistantResponse;
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <div className="h-full overflow-y-auto">
+      <div className="container mx-auto px-4 py-6 max-w-4xl min-h-full">
         {!hasContent && <WelcomeScreen error={error} />}
 
         {/* Messages */}

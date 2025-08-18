@@ -60,23 +60,29 @@ export default function HomePage() {
         </div>
       )}
 
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <ChatArea
-          messages={assistant.messages}
-          currentTranscript={assistant.currentTranscript}
-          currentAssistantResponse={assistant.currentAssistantResponse}
-          isProcessing={assistant.recordingState.isProcessing}
-          error={assistant.error}
-        />
+      <main className="flex-1 overflow-hidden relative">
+        {/* Chat area with calculated bottom margin to avoid fixed controls */}
+        <div className="h-full overflow-hidden" style={{ marginBottom: '120px' }}>
+          <ChatArea
+            messages={assistant.messages}
+            currentTranscript={assistant.currentTranscript}
+            currentAssistantResponse={assistant.currentAssistantResponse}
+            isProcessing={assistant.recordingState.isProcessing}
+            error={assistant.error}
+          />
+        </div>
 
-        <RecordingControls
-          recordingState={assistant.recordingState}
-          connectionState={assistant.connectionState}
-          error={assistant.error}
-          onStartRecording={assistant.startRecording}
-          onStopRecording={assistant.stopRecording}
-          onClearError={() => assistant.setError(null)}
-        />
+        {/* Fixed recording controls that never move */}
+        <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg">
+          <RecordingControls
+            recordingState={assistant.recordingState}
+            connectionState={assistant.connectionState}
+            error={assistant.error}
+            onStartRecording={assistant.startRecording}
+            onStopRecording={assistant.stopRecording}
+            onClearError={() => assistant.setError(null)}
+          />
+        </div>
       </main>
     </div>
   );

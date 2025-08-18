@@ -44,12 +44,12 @@ export enum WebSocketMessageType {
   SESSION_END = 'SESSION_END',
   HEARTBEAT = 'HEARTBEAT',
   
-  // Server to client
-  TRANSCRIPT_PARTIAL = 'TRANSCRIPT_PARTIAL',
-  TRANSCRIPT_FINAL = 'TRANSCRIPT_FINAL',
-  ASSISTANT_DELTA = 'ASSISTANT_DELTA',
-  ASSISTANT_DONE = 'ASSISTANT_DONE',
-  ERROR = 'ERROR',
+  // Server to client (matching backend dot notation)
+  TRANSCRIPT_PARTIAL = 'transcript.partial',
+  TRANSCRIPT_FINAL = 'transcript.final',
+  ASSISTANT_DELTA = 'assistant.delta',
+  ASSISTANT_DONE = 'assistant.done',
+  ERROR = 'error',
   SESSION_READY = 'SESSION_READY',
   
   // Bidirectional
