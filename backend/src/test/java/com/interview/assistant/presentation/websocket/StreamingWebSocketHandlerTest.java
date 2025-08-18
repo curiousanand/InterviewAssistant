@@ -6,6 +6,7 @@ import com.interview.assistant.presentation.websocket.handler.ValidationHandler;
 import com.interview.assistant.presentation.websocket.model.WebSocketMessage;
 import com.interview.assistant.domain.service.IAIService;
 import com.interview.assistant.domain.service.ITranscriptionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +47,9 @@ class StreamingWebSocketHandlerTest {
     private BusinessLogicHandler businessLogicHandler;
     
     @Mock
+    private ObjectMapper objectMapper;
+    
+    @Mock
     private WebSocketSession mockSession;
     
     @Mock
@@ -60,7 +64,7 @@ class StreamingWebSocketHandlerTest {
     @BeforeEach
     void setUp() {
         webSocketHandler = new StreamingWebSocketHandler(
-            sessionManager, validationHandler, authenticationHandler, businessLogicHandler);
+            sessionManager, validationHandler, authenticationHandler, businessLogicHandler, objectMapper);
         
         testSessionId = "test-session-123";
         

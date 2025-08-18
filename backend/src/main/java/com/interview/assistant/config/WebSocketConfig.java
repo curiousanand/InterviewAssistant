@@ -1,6 +1,6 @@
 package com.interview.assistant.config;
 
-import com.interview.assistant.presentation.websocket.StreamingWebSocketHandler;
+import com.interview.assistant.websocket.StreamingWebSocketHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -26,7 +26,5 @@ public class WebSocketConfig implements WebSocketConfigurer {
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(streamingHandler, "/ws/stream")
                 .setAllowedOrigins("*"); // Allow frontend connections
-        
-        System.out.println("WebSocket endpoint will be available at: /ws/stream");
     }
 }
