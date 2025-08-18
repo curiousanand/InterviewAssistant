@@ -1,11 +1,13 @@
 package com.interview.assistant.presentation.websocket;
 
-import com.interview.assistant.presentation.websocket.handler.AuthenticationHandler;
-import com.interview.assistant.presentation.websocket.handler.BusinessLogicHandler;
-import com.interview.assistant.presentation.websocket.handler.ValidationHandler;
-import com.interview.assistant.presentation.websocket.model.WebSocketMessage;
-import com.interview.assistant.domain.service.IAIService;
-import com.interview.assistant.domain.service.ITranscriptionService;
+import com.interview.assistant.websocket.AuthenticationHandler;
+import com.interview.assistant.websocket.BusinessLogicHandler;
+import com.interview.assistant.websocket.ValidationHandler;
+import com.interview.assistant.websocket.WebSocketMessage;
+import com.interview.assistant.websocket.StreamingWebSocketHandler;
+import com.interview.assistant.websocket.WebSocketSessionManager;
+import com.interview.assistant.service.IAIService;
+import com.interview.assistant.service.ITranscriptionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

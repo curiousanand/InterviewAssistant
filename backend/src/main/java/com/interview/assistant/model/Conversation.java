@@ -1,8 +1,5 @@
 package com.interview.assistant.model;
 
-import com.interview.assistant.model.Session;
-import com.interview.assistant.model.Message;
-
 import java.time.Instant;
 import java.util.List;
 
