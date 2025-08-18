@@ -186,14 +186,7 @@ export function useInterviewAssistant() {
         await conversationServiceRef.current.createSession('en-US', true);
       }
 
-      // Update state immediately for responsive UI
-      setRecordingState(prev => ({
-        ...prev,
-        isRecording: true,
-        isProcessing: false,
-        error: null
-      }));
-
+      // Don't update state prematurely - let AudioStreamingService handle state updates
       await audioServiceRef.current.startRecording();
       setError(null);
     } catch (error) {
@@ -217,13 +210,7 @@ export function useInterviewAssistant() {
     }
 
     try {
-      setRecordingState(prev => ({
-        ...prev,
-        isRecording: false,
-        isProcessing: false,
-        audioLevel: 0
-      }));
-
+      // Don't update state prematurely - let AudioStreamingService handle state updates
       await audioServiceRef.current.stopRecording();
     } catch (error) {
       console.error('Failed to stop recording:', error);

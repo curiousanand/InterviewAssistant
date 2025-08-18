@@ -137,11 +137,23 @@ export class AudioStreamingService {
       // Start audio capture (with fallback for demo)
       console.log('Starting audio capture...');
       try {
+        // Ensure we have a fresh audio capture instance to avoid state issues
+        if (!this.audioCapture) {
+          await this.reinitializeAudioCapture();
+        }
         await this.audioCapture.start();
         console.log('Audio capture started successfully');
       } catch (audioError) {
-        console.warn('Audio capture failed, using demo mode:', audioError);
-        // Continue without real audio for demo purposes
+        console.warn('Audio capture failed, trying fresh instance:', audioError);
+        // Try recreating the audio capture instance
+        try {
+          await this.reinitializeAudioCapture();
+          await this.audioCapture.start();
+          console.log('Audio capture started successfully with fresh instance');
+        } catch (secondError) {
+          console.warn('Audio capture failed even with fresh instance, using demo mode:', secondError);
+          // Continue without real audio for demo purposes
+        }
       }
       
       // Start audio level monitoring
@@ -207,7 +219,11 @@ export class AudioStreamingService {
 
       // Stop audio capture
       if (this.audioCapture) {
-        await this.audioCapture.stop();
+        try {
+          await this.audioCapture.stop();
+        } catch (error) {
+          console.warn('Error stopping audio capture:', error);
+        }
       }
 
       // Stop audio level monitoring
@@ -222,6 +238,9 @@ export class AudioStreamingService {
         isProcessing: false, 
         audioLevel: 0
       });
+
+      // Small delay to ensure complete state cleanup
+      await new Promise(resolve => setTimeout(resolve, 50));
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to stop recording';
@@ -413,9 +432,16 @@ export class AudioStreamingService {
     this.stopAudioLevelMonitoring();
 
     if (this.audioCapture) {
-      await this.audioCapture.stop();
-      this.audioCapture.removeAllListeners();
-      this.audioCapture = null;
+      try {
+        await this.audioCapture.stop();
+        if (this.audioCapture && typeof this.audioCapture.removeAllListeners === 'function') {
+          this.audioCapture.removeAllListeners();
+        }
+      } catch (error) {
+        console.warn('Error during audio capture cleanup:', error);
+      } finally {
+        this.audioCapture = null;
+      }
     }
 
     // Audio context and media stream are managed by AudioCapture implementations
@@ -425,6 +451,48 @@ export class AudioStreamingService {
     this.onStateChange = undefined;
     this.onVADResult = undefined;
     this.onError = undefined;
+  }
+
+  /**
+   * Reinitialize audio capture with a fresh instance
+   * Fixes state management issues with reused instances
+   */
+  private async reinitializeAudioCapture(): Promise<void> {
+    // Clean up existing instance
+    if (this.audioCapture) {
+      try {
+        await this.audioCapture.stop();
+        if (this.audioCapture && typeof this.audioCapture.removeAllListeners === 'function') {
+          this.audioCapture.removeAllListeners();
+        }
+      } catch (error) {
+        console.warn('Error cleaning up old audio capture:', error);
+      } finally {
+        this.audioCapture = null;
+      }
+    }
+
+    // Create fresh audio capture instance
+    const factory = AudioCaptureFactory.getInstance();
+    
+    // Get optimized configuration
+    const config = factory.getRecommendedConfiguration();
+    config.sampleRate = this.SAMPLE_RATE;
+    config.channels = this.CHANNELS;
+    config.chunkDuration = this.CHUNK_DURATION;
+    config.silenceDetection = true;
+    config.silenceThreshold = this.SILENCE_THRESHOLD;
+    config.audioLevelMonitoring = true;
+
+    // Create fresh audio capture
+    this.audioCapture = await factory.createCapture(config);
+    
+    // Setup audio capture handlers
+    this.audioCapture.onAudioData((audioData) => {
+      this.handleAudioData(audioData);
+    });
+    
+    console.log('Audio capture reinitialized with fresh instance');
   }
 
   /**
