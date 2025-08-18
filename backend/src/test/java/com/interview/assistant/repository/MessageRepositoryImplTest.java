@@ -1,8 +1,8 @@
-package com.interview.assistant.infrastructure.repository;
+package com.interview.assistant.repository;
 
-import com.interview.assistant.domain.entity.Message;
-import com.interview.assistant.domain.entity.Session;
-import com.interview.assistant.domain.repository.IMessageRepository;
+import com.interview.assistant.model.Message;
+import com.interview.assistant.model.Session;
+import com.interview.assistant.repository.IMessageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;

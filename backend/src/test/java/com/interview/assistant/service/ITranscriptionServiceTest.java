@@ -1,4 +1,4 @@
-package com.interview.assistant.domain.service;
+package com.interview.assistant.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

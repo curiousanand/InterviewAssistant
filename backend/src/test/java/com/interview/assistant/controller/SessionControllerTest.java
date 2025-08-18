@@ -1,7 +1,7 @@
-package com.interview.assistant.presentation.controller;
+package com.interview.assistant.controller;
 
-import com.interview.assistant.domain.entity.Session;
-import com.interview.assistant.domain.repository.ISessionRepository;
+import com.interview.assistant.model.Session;
+import com.interview.assistant.repository.ISessionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

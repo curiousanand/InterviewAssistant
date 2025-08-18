@@ -1,4 +1,4 @@
-package com.interview.assistant.presentation.websocket;
+package com.interview.assistant.websocket;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

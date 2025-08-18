@@ -1,4 +1,4 @@
-package com.interview.assistant.presentation.controller;
+package com.interview.assistant.controller;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;

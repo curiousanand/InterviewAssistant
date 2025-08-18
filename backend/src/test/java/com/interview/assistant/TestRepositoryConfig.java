@@ -1,9 +1,9 @@
 package com.interview.assistant;
 
-import com.interview.assistant.domain.repository.ISessionRepository;
-import com.interview.assistant.domain.repository.IMessageRepository;
-import com.interview.assistant.infrastructure.repository.SessionRepositoryImpl;
-import com.interview.assistant.infrastructure.repository.MessageRepositoryImpl;
+import com.interview.assistant.repository.ISessionRepository;
+import com.interview.assistant.repository.IMessageRepository;
+import com.interview.assistant.repository.SessionRepositoryImpl;
+import com.interview.assistant.repository.MessageRepositoryImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

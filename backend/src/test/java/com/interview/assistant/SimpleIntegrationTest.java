@@ -7,10 +7,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.ActiveProfiles;
 
-import com.interview.assistant.domain.repository.ISessionRepository;
-import com.interview.assistant.domain.repository.IMessageRepository;
-import com.interview.assistant.domain.entity.Session;
-import com.interview.assistant.domain.entity.Message;
+import com.interview.assistant.repository.ISessionRepository;
+import com.interview.assistant.repository.IMessageRepository;
+import com.interview.assistant.model.Session;
+import com.interview.assistant.model.Message;
 
 import static org.assertj.core.api.Assertions.*;
 

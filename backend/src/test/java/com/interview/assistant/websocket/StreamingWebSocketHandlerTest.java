@@ -1,4 +1,4 @@
-package com.interview.assistant.presentation.websocket;
+package com.interview.assistant.websocket;
 
 import com.interview.assistant.websocket.AuthenticationHandler;
 import com.interview.assistant.websocket.BusinessLogicHandler;

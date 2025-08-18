@@ -54,7 +54,7 @@ describe('SimpleMicrophoneButton', () => {
       expect(button).toHaveClass('cursor-not-allowed');
     });
 
-    it('should show debug information', () => {
+    it('should show recording status', () => {
       const props = {
         ...defaultProps,
         recordingState: mockFactory.recordingState({ isRecording: true }),
@@ -62,7 +62,7 @@ describe('SimpleMicrophoneButton', () => {
 
       render(<SimpleMicrophoneButton {...props} />);
       
-      expect(screen.getByText(/Debug: isRecording=true/)).toBeInTheDocument();
+      expect(screen.getByText(/Recording\.\.\./)).toBeInTheDocument();
     });
   });
 
@@ -104,17 +104,19 @@ describe('SimpleMicrophoneButton', () => {
       expect(defaultProps.onStopRecording).not.toHaveBeenCalled();
     });
 
-    it('should log click events to console', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+    it('should handle button activation correctly', () => {
+      const onStartRecording = jest.fn();
+      const props = {
+        ...defaultProps,
+        onStartRecording,
+      };
       
-      render(<SimpleMicrophoneButton {...defaultProps} />);
+      render(<SimpleMicrophoneButton {...props} />);
       
       const button = screen.getByRole('button');
       fireEvent.click(button);
       
-      expect(consoleSpy).toHaveBeenCalledWith('Button activated, isRecording:', false);
-      
-      consoleSpy.mockRestore();
+      expect(onStartRecording).toHaveBeenCalled();
     });
   });
 

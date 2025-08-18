@@ -1,4 +1,4 @@
-package com.interview.assistant.domain.entity;
+package com.interview.assistant.model;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;

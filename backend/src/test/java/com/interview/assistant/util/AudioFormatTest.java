@@ -1,4 +1,4 @@
-package com.interview.assistant.domain.valueobject;
+package com.interview.assistant.util;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;

@@ -1,6 +1,7 @@
-package com.interview.assistant.presentation.websocket.handler;
+package com.interview.assistant.websocket;
 
-import com.interview.assistant.presentation.websocket.model.WebSocketMessage;
+import com.interview.assistant.websocket.WebSocketMessage;
+import com.interview.assistant.websocket.ValidationHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
