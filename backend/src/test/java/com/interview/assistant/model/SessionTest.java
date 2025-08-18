@@ -183,7 +183,13 @@ class SessionTest {
         // When & Then - below threshold
         assertThat(session.shouldSummarize(threshold)).isFalse();
         
-        // Add one more message to exceed threshold
+        // Add one more message to reach threshold
+        session.addMessage(Message.createUserMessage("Message 4", 0.9, "en-US"));
+        
+        // When & Then - at threshold
+        assertThat(session.shouldSummarize(threshold)).isFalse();
+        
+        // Add one more message to exceed threshold  
         session.addMessage(Message.createUserMessage("Message 5", 0.9, "en-US"));
         
         // When & Then - above threshold

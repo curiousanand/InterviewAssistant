@@ -107,6 +107,8 @@ public class Session {
         session.messageCount = 0;
         session.totalTokensUsed = 0;
         session.messages = new ArrayList<>();
+        session.createdAt = Instant.now();
+        session.lastAccessedAt = Instant.now();
         return session;
     }
     

@@ -226,7 +226,7 @@ class MessageTest {
         // Test long content
         String longContent = "This is a very long message that should be truncated";
         Message longMessage = Message.createUserMessage(longContent, 0.9, "en-US");
-        assertThat(longMessage.getContentPreview(20)).isEqualTo("This is a very l...");
+        assertThat(longMessage.getContentPreview(20)).isEqualTo("This is a very lo...");
         
         // Test exact length
         assertThat(longMessage.getContentPreview(longContent.length())).isEqualTo(longContent);

@@ -28,9 +28,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen bg-background font-sans antialiased">
         <div className="relative flex min-h-screen flex-col">
-          <div className="flex-1">
-            {children}
-          </div>
+          {children}
         </div>
       </body>
     </html>

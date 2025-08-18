@@ -106,6 +106,7 @@ public class Message {
         message.confidence = confidence;
         message.detectedLanguage = language;
         message.status = ProcessingStatus.COMPLETED;
+        message.createdAt = Instant.now();
         return message;
     }
     
@@ -125,6 +126,7 @@ public class Message {
         message.tokensUsed = tokensUsed;
         message.processingTimeMs = processingTime;
         message.status = ProcessingStatus.COMPLETED;
+        message.createdAt = Instant.now();
         return message;
     }
     

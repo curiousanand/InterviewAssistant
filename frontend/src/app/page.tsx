@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useInterviewAssistant } from '../hooks/useInterviewAssistant';
 import { Header } from '../components/interview/Header';
 import { ChatArea } from '../components/interview/ChatArea';
-import { RecordingControls } from '../components/interview/RecordingControls';
+import { Footer } from '../components/interview/Footer';
 import { LanguageSelector } from '../components/ui/LanguageSelector';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 
@@ -61,8 +61,8 @@ export default function HomePage() {
       )}
 
       <main className="flex-1 overflow-hidden relative">
-        {/* Chat area with calculated bottom margin to avoid fixed controls */}
-        <div className="h-full overflow-hidden" style={{ marginBottom: '120px' }}>
+        {/* Chat area with padding to avoid fixed header and footer */}
+        <div className="h-full overflow-hidden pb-32 pt-4">
           <ChatArea
             messages={assistant.messages}
             currentTranscript={assistant.currentTranscript}
@@ -71,19 +71,17 @@ export default function HomePage() {
             error={assistant.error}
           />
         </div>
-
-        {/* Fixed recording controls that never move */}
-        <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-lg">
-          <RecordingControls
-            recordingState={assistant.recordingState}
-            connectionState={assistant.connectionState}
-            error={assistant.error}
-            onStartRecording={assistant.startRecording}
-            onStopRecording={assistant.stopRecording}
-            onClearError={() => assistant.setError(null)}
-          />
-        </div>
       </main>
+
+      {/* Fixed Footer with microphone controls */}
+      <Footer
+        recordingState={assistant.recordingState}
+        connectionState={assistant.connectionState}
+        error={assistant.error}
+        onStartRecording={assistant.startRecording}
+        onStopRecording={assistant.stopRecording}
+        onClearError={() => assistant.setError(null)}
+      />
     </div>
   );
 }

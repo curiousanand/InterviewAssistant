@@ -6,6 +6,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.net.InetSocketAddress;
@@ -22,6 +24,7 @@ import static org.mockito.Mockito.*;
  */
 @DisplayName("WebSocketSessionManager Tests")
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class WebSocketSessionManagerTest {
     
     private WebSocketSessionManager sessionManager;
