@@ -133,7 +133,10 @@ public class RealTimeWebSocketHandler implements WebSocketHandler {
         // Process audio through conversation orchestrator
         conversationOrchestrator.processAudioChunk(appSessionId, audioData, orchestrationEvent -> {
             try {
-                handleOrchestrationEvent(session, orchestrationEvent);
+                // Check session state before handling events
+                if (session.isOpen() && sessionStates.containsKey(appSessionId)) {
+                    handleOrchestrationEvent(session, orchestrationEvent);
+                }
             } catch (Exception e) {
                 logger.error("Error handling orchestration event for session: {}", appSessionId, e);
             }
@@ -152,6 +155,12 @@ public class RealTimeWebSocketHandler implements WebSocketHandler {
      * Handle orchestration events and send appropriate WebSocket messages
      */
     private void handleOrchestrationEvent(WebSocketSession session, ConversationOrchestrator.OrchestrationEvent event) throws Exception {
+        // Check if session is still open before processing
+        if (!session.isOpen()) {
+            logger.debug("Skipping orchestration event {} - WebSocket session is closed: {}", event.getType(), session.getId());
+            return;
+        }
+        
         logger.debug("Handling orchestration event: {} for session: {}", event.getType(), event.getSessionId());
 
         switch (event.getType()) {
@@ -227,7 +236,10 @@ public class RealTimeWebSocketHandler implements WebSocketHandler {
         // Start conversation orchestration
         conversationOrchestrator.startSession(appSessionId, orchestrationEvent -> {
             try {
-                handleOrchestrationEvent(session, orchestrationEvent);
+                // Additional session state check for async callbacks
+                if (session.isOpen() && sessionStates.containsKey(appSessionId)) {
+                    handleOrchestrationEvent(session, orchestrationEvent);
+                }
             } catch (Exception e) {
                 logger.error("Error handling orchestration event during session start", e);
             }

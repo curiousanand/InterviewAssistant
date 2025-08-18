@@ -12,6 +12,11 @@ export const metadata: Metadata = {
   title: 'Interview Assistant',
   description: 'Real-time multilingual Q&A assistant with voice input and AI-powered responses',
   keywords: ['interview', 'voice', 'AI', 'assistant', 'speech-to-text', 'real-time'],
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export const viewport = {
