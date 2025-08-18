@@ -77,6 +77,13 @@ class StreamingWebSocketHandlerTest {
         when(mockSession.getId()).thenReturn(testSessionId);
         when(mockSession.isOpen()).thenReturn(true);
         
+        // Setup object mapper mock
+        try {
+            when(objectMapper.writeValueAsString(any())).thenReturn("{\"type\":\"session.ready\",\"sessionId\":\"" + testSessionId + "\"}");
+        } catch (Exception e) {
+            // This won't actually happen in tests, but needed for compilation
+        }
+        
         // Setup test message
         testMessage = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,

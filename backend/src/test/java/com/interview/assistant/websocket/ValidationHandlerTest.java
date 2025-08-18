@@ -34,7 +34,7 @@ class ValidationHandlerTest {
         WebSocketMessage validMessage = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             validSessionId,
-            "valid-audio-data"
+            new byte[]{1, 2, 3, 4, 5}
         );
         
         // When
@@ -80,7 +80,7 @@ class ValidationHandlerTest {
         WebSocketMessage message = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             null,
-            "test-payload"
+            new byte[]{1, 2, 3}
         );
         
         // When
@@ -98,7 +98,7 @@ class ValidationHandlerTest {
         WebSocketMessage message = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             "",
-            "test-payload"
+            new byte[]{1, 2, 3}
         );
         
         // When
@@ -116,7 +116,7 @@ class ValidationHandlerTest {
         WebSocketMessage message = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             "invalid-session-id-format",
-            "test-payload"
+            new byte[]{1, 2, 3}
         );
         
         // When
@@ -135,7 +135,7 @@ class ValidationHandlerTest {
         WebSocketMessage message = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             longSessionId,
-            "test-payload"
+            new byte[]{1, 2, 3}
         );
         
         // When
@@ -173,7 +173,7 @@ class ValidationHandlerTest {
         WebSocketMessage validAudioMessage = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             validSessionId,
-            "valid-audio-bytes"
+            new byte[]{1, 2, 3, 4, 5, 6, 7, 8}
         );
         
         // When
@@ -205,7 +205,7 @@ class ValidationHandlerTest {
     @DisplayName("Should reject oversized audio chunk")
     void shouldRejectOversizedAudioChunk() {
         // Given - Create oversized audio data (> 64KB)
-        String oversizedAudio = "a".repeat(70 * 1024); // 70KB
+        byte[] oversizedAudio = new byte[70 * 1024]; // 70KB
         WebSocketMessage audioMessage = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             validSessionId,
@@ -320,7 +320,7 @@ class ValidationHandlerTest {
         WebSocketMessage messageWithMetadata = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             validSessionId,
-            "audio-data"
+            new byte[]{1, 2, 3, 4}
         );
         messageWithMetadata.setMetadata(java.util.Map.of("format", "PCM", "sampleRate", 16000));
         
@@ -358,13 +358,13 @@ class ValidationHandlerTest {
     void shouldHandleVariousPayloadTypes() {
         // Test different payload types that might be valid
         
-        // String payload
+        // String payload (should fail validation)
         WebSocketMessage stringMessage = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             validSessionId,
             "string-payload"
         );
-        assertThat(validationHandler.validate(stringMessage).isValid()).isTrue();
+        assertThat(validationHandler.validate(stringMessage).isValid()).isFalse();
         
         // Byte array payload (if converted to appropriate type)
         WebSocketMessage byteMessage = WebSocketMessage.create(
@@ -390,7 +390,7 @@ class ValidationHandlerTest {
         WebSocketMessage message1 = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             validSessionId,
-            "audio1"
+            new byte[]{1, 2, 3}
         );
         WebSocketMessage message2 = WebSocketMessage.create(
             WebSocketMessage.MessageType.HEARTBEAT,
@@ -418,7 +418,7 @@ class ValidationHandlerTest {
     @DisplayName("Should validate message size limits")
     void shouldValidateMessageSizeLimits() {
         // Given - Create a message that might exceed size limits
-        String largePayload = "x".repeat(500 * 1024); // 500KB
+        byte[] largePayload = new byte[500 * 1024]; // 500KB
         WebSocketMessage largeMessage = WebSocketMessage.create(
             WebSocketMessage.MessageType.AUDIO_DATA,
             validSessionId,
@@ -438,10 +438,11 @@ class ValidationHandlerTest {
      */
     private Object getValidPayloadForType(WebSocketMessage.MessageType type) {
         return switch (type) {
-            case AUDIO_DATA -> "audio-data";
+            case AUDIO_DATA -> new byte[]{1, 2, 3, 4, 5};
             case SESSION_START -> java.util.Map.of("language", "en-US");
             case SESSION_END, HEARTBEAT, PONG, PING -> null;
-            case TRANSCRIPT_PARTIAL, TRANSCRIPT_FINAL -> "transcribed text";
+            case TRANSCRIPT_PARTIAL -> new WebSocketMessage.TranscriptPayload("transcribed text", 0.95, false);
+            case TRANSCRIPT_FINAL -> new WebSocketMessage.TranscriptPayload("transcribed text", 0.95, true);
             case ASSISTANT_DELTA, ASSISTANT_DONE -> "ai response";
             case SESSION_READY -> java.util.Map.of("sessionId", validSessionId);
             case ERROR -> "error message";

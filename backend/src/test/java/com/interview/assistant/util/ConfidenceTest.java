@@ -136,12 +136,12 @@ class ConfidenceTest {
         // Combine with equal weight (0.5)
         Confidence combined = conf1.combineWith(conf2, 0.5);
         // (0.8 * 0.5) + (0.9 * 0.5) = 0.4 + 0.45 = 0.85
-        assertThat(combined.getValue()).isEqualTo(0.85);
+        assertThat(combined.getValue()).isCloseTo(0.85, within(0.0001));
         
         // Combine with different weight (0.75)
         Confidence combined2 = conf1.combineWith(conf2, 0.75);
         // (0.8 * 0.75) + (0.9 * 0.25) = 0.6 + 0.225 = 0.825
-        assertThat(combined2.getValue()).isEqualTo(0.825);
+        assertThat(combined2.getValue()).isCloseTo(0.825, within(0.0001));
     }
     
     @Test

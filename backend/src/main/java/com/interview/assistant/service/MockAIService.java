@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture;
  * Rationale: Allows testing of application flow without Azure OpenAI Services
  */
 @Service
-@Profile("!test")
+@Profile("test")
 public class MockAIService implements IAIService {
     
     @Override
@@ -61,6 +61,35 @@ public class MockAIService implements IAIService {
             true,
             null
         ));
+    }
+    
+    @Override
+    public CompletableFuture<Void> generateStreamingResponse(ChatRequest request, StreamingCallback callback) {
+        // Simulate streaming with mock data based on conversation context
+        CompletableFuture.runAsync(() -> {
+            try {
+                String responseText = "Mock AI response to your " + request.getMessageCount() + " messages";
+                String[] words = responseText.split(" ");
+                
+                for (String word : words) {
+                    callback.onToken(word + " ");
+                    Thread.sleep(150); // Simulate realistic streaming delay
+                }
+                
+                callback.onComplete(new MockAIResponse(
+                    responseText,
+                    words.length,
+                    800.0,
+                    request.getModel(),
+                    true,
+                    null
+                ));
+            } catch (InterruptedException e) {
+                callback.onError("Mock streaming interrupted: " + e.getMessage());
+            }
+        });
+        
+        return CompletableFuture.completedFuture(null);
     }
     
     @Override

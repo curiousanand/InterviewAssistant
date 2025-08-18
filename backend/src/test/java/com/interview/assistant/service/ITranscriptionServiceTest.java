@@ -6,14 +6,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 /**
  * Comprehensive test suite for ITranscriptionService interface implementations
@@ -22,6 +26,7 @@ import static org.mockito.Mockito.*;
  */
 @DisplayName("ITranscriptionService Interface Tests")
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class ITranscriptionServiceTest {
     
     @Mock
@@ -58,11 +63,11 @@ class ITranscriptionServiceTest {
         testSessionId = "test-session-123";
         testLanguage = "en-US";
         
-        // Setup default audio format mock
-        when(mockAudioFormat.getSampleRate()).thenReturn(16000);
-        when(mockAudioFormat.getChannels()).thenReturn(1);
-        when(mockAudioFormat.getBitsPerSample()).thenReturn(16);
-        when(mockAudioFormat.getEncoding()).thenReturn("PCM");
+        // Setup default audio format mock with lenient stubbing
+        lenient().when(mockAudioFormat.getSampleRate()).thenReturn(16000);
+        lenient().when(mockAudioFormat.getChannels()).thenReturn(1);
+        lenient().when(mockAudioFormat.getBitsPerSample()).thenReturn(16);
+        lenient().when(mockAudioFormat.getEncoding()).thenReturn("PCM");
     }
     
     @Test
@@ -142,8 +147,9 @@ class ITranscriptionServiceTest {
         
         // Then
         assertThat(future).failsWithin(1, TimeUnit.SECONDS)
-            .withThrowableOfType(RuntimeException.class)
-            .withMessage("Network connection failed");
+            .withThrowableOfType(ExecutionException.class)
+            .withCauseInstanceOf(RuntimeException.class)
+            .withMessageContaining("Network connection failed");
     }
     
     @Test

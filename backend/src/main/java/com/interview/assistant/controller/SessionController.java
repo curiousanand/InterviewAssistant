@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
-import org.springframework.context.annotation.Profile;
 
 import java.time.Instant;
 
@@ -20,7 +19,6 @@ import java.time.Instant;
  */
 @RestController
 @RequestMapping("/api/v1/sessions")
-@Profile("!test")
 public class SessionController {
     
     private final ISessionRepository sessionRepository;

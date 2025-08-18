@@ -4,6 +4,8 @@ import com.interview.assistant.websocket.AuthenticationHandler;
 import com.interview.assistant.websocket.BusinessLogicHandler;
 import com.interview.assistant.websocket.ValidationHandler;
 import com.interview.assistant.websocket.WebSocketMessage;
+import com.interview.assistant.websocket.MessageProcessingResult;
+import com.interview.assistant.websocket.MessageType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -12,6 +14,8 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Main WebSocket handler for streaming audio and real-time communication
@@ -24,11 +28,16 @@ import org.springframework.web.socket.WebSocketSession;
 @Profile("!test")
 public class StreamingWebSocketHandler implements WebSocketHandler {
     
+    private static final Logger logger = LoggerFactory.getLogger(StreamingWebSocketHandler.class);
+    
     private final WebSocketSessionManager sessionManager;
     private final ValidationHandler validationHandler;
     private final AuthenticationHandler authenticationHandler;
     private final BusinessLogicHandler businessLogicHandler;
     private final ObjectMapper objectMapper;
+    
+    // Map WebSocket session ID to application session ID
+    private final java.util.Map<String, String> webSocketToAppSessionMap = new java.util.concurrent.ConcurrentHashMap<>();
     
     public StreamingWebSocketHandler(WebSocketSessionManager sessionManager,
                                    ValidationHandler validationHandler,
@@ -53,7 +62,15 @@ public class StreamingWebSocketHandler implements WebSocketHandler {
             null
         );
         
-        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(readyMessage)));
+        String jsonMessage = objectMapper.writeValueAsString(readyMessage);
+        if (jsonMessage != null) {
+            try {
+                session.sendMessage(new TextMessage(jsonMessage));
+            } catch (Exception e) {
+                // Log error but don't fail connection establishment
+                logger.warn("Failed to send session ready message to {}: {}", session.getId(), e.getMessage());
+            }
+        }
     }
     
     @Override
@@ -62,21 +79,126 @@ public class StreamingWebSocketHandler implements WebSocketHandler {
             if (message instanceof TextMessage) {
                 // Handle JSON text messages
                 String payload = ((TextMessage) message).getPayload();
+                logger.info("Received text message: {}", payload);
                 
-                // For demo purposes, simulate a transcription response
-                sendMockTranscription(session, payload);
+                // Parse the message to extract session information
+                try {
+                    WebSocketMessage wsMessage = objectMapper.readValue(payload, WebSocketMessage.class);
+                    if (wsMessage.getType() == WebSocketMessage.MessageType.SESSION_START) {
+                        // Store mapping between WebSocket session ID and application session ID
+                        String webSocketSessionId = session.getId();
+                        String appSessionId = wsMessage.getSessionId();
+                        webSocketToAppSessionMap.put(webSocketSessionId, appSessionId);
+                        logger.info("Mapped WebSocket session {} to application session {}", webSocketSessionId, appSessionId);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to parse text message: {}", payload, e);
+                }
                 
             } else if (message instanceof BinaryMessage) {
-                // Handle audio binary messages
+                // Handle audio binary messages with Azure Speech Service
                 byte[] audioData = ((BinaryMessage) message).getPayload().array();
+                logger.info("Received audio data: {} bytes", audioData.length);
                 
-                // For demo purposes, simulate transcription of audio
-                // TODO: Process audioData with actual transcription service
-                sendMockTranscription(session, "You said something (simulated transcription from " + audioData.length + " bytes)");
+                // Get the correct application session ID
+                String webSocketSessionId = session.getId();
+                String appSessionId = webSocketToAppSessionMap.get(webSocketSessionId);
+                
+                if (appSessionId == null) {
+                    logger.error("No application session mapped for WebSocket session: {}", webSocketSessionId);
+                    sendErrorMessage(session, "Session not initialized. Please send SESSION_START message first.");
+                    return;
+                }
+                
+                // Create WebSocket message for audio processing using application session ID
+                WebSocketMessage audioMessage = WebSocketMessage.create(WebSocketMessage.MessageType.AUDIO_DATA, appSessionId, audioData);
+                
+                // Process audio through BusinessLogicHandler (which uses Azure Speech Service)
+                logger.info("Processing audio message through BusinessLogicHandler for app session: {} (WebSocket session: {})", appSessionId, webSocketSessionId);
+                businessLogicHandler.processAudioMessage(audioMessage)
+                    .thenAccept(result -> {
+                        logger.info("BusinessLogicHandler completed for session: {}, success: {}", session.getId(), result.isSuccess());
+                        try {
+                            sendAzureProcessingResult(session, result);
+                        } catch (Exception e) {
+                            logger.error("Error sending Azure processing result for session: {}", session.getId(), e);
+                        }
+                    })
+                    .exceptionally(throwable -> {
+                        logger.error("Error processing audio through Azure Speech Service for session: {}", session.getId(), throwable);
+                        try {
+                            sendErrorMessage(session, "Azure Speech processing error: " + throwable.getMessage());
+                        } catch (Exception e) {
+                            logger.error("Error sending error message for session: {}", session.getId(), e);
+                        }
+                        return null;
+                    });
             }
         } catch (Exception e) {
-            // Log error appropriately in production
+            logger.error("Error processing WebSocket message for session: {}", session.getId(), e);
             sendErrorMessage(session, "Error processing message: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Send Azure Speech Service processing result to client
+     */
+    private void sendAzureProcessingResult(WebSocketSession session, Object result) throws Exception {
+        String sessionId = session.getId();
+        
+        // Handle the actual result from BusinessLogicHandler
+        if (result instanceof BusinessLogicHandler.MessageProcessingResult) {
+            BusinessLogicHandler.MessageProcessingResult processingResult = (BusinessLogicHandler.MessageProcessingResult) result;
+            
+            if (processingResult.isSuccess() && processingResult.getType() == BusinessLogicHandler.MessageProcessingResult.ProcessingType.CONVERSATION) {
+                // Extract actual transcription and AI response from Azure services
+                BusinessLogicHandler.ConversationResult conversation = (BusinessLogicHandler.ConversationResult) processingResult.getData();
+                
+                String transcriptionText = conversation.getTranscription().getText();
+                double confidence = conversation.getTranscription().getConfidence();
+                String aiResponseText = conversation.getAiResponse().getContent();
+                
+                // Send partial transcript
+                String partialMessage = String.format(
+                    "{\"type\":\"transcript.partial\",\"sessionId\":\"%s\",\"payload\":{\"text\":\"%s\",\"confidence\":%.2f}}",
+                    sessionId,
+                    escapeJson(transcriptionText),
+                    confidence
+                );
+                session.sendMessage(new TextMessage(partialMessage));
+                
+                // Send final transcript
+                String finalMessage = String.format(
+                    "{\"type\":\"transcript.final\",\"sessionId\":\"%s\",\"payload\":{\"text\":\"%s\",\"confidence\":%.2f}}",
+                    sessionId,
+                    escapeJson(transcriptionText),
+                    confidence
+                );
+                session.sendMessage(new TextMessage(finalMessage));
+                
+                // Send AI response
+                String aiResponse = String.format(
+                    "{\"type\":\"assistant.delta\",\"sessionId\":\"%s\",\"payload\":{\"text\":\"%s\"}}",
+                    sessionId,
+                    escapeJson(aiResponseText)
+                );
+                session.sendMessage(new TextMessage(aiResponse));
+                
+                // Send completion signal
+                String completeMessage = String.format(
+                    "{\"type\":\"assistant.done\",\"sessionId\":\"%s\",\"payload\":{\"text\":\"\"}}",
+                    sessionId
+                );
+                session.sendMessage(new TextMessage(completeMessage));
+                
+            } else {
+                // Handle error case
+                String errorMessage = processingResult.isSuccess() ? "Unexpected processing result type" : processingResult.getErrorMessage();
+                sendErrorMessage(session, errorMessage);
+            }
+        } else {
+            // Fallback for unexpected result type
+            sendErrorMessage(session, "Invalid processing result format");
         }
     }
     
@@ -145,6 +267,9 @@ public class StreamingWebSocketHandler implements WebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception {
         sessionManager.unregisterSession(session);
         authenticationHandler.cleanupSession(session);
+        // Clean up session mapping
+        webSocketToAppSessionMap.remove(session.getId());
+        logger.info("Cleaned up session mapping for WebSocket session: {}", session.getId());
     }
     
     @Override

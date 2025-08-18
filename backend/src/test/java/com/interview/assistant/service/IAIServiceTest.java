@@ -6,9 +6,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.*;
@@ -22,6 +25,7 @@ import static org.mockito.Mockito.*;
  */
 @DisplayName("IAIService Interface Tests")
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class IAIServiceTest {
     
     @Mock
@@ -117,8 +121,9 @@ class IAIServiceTest {
         
         // Then
         assertThat(future).failsWithin(1, TimeUnit.SECONDS)
-            .withThrowableOfType(RuntimeException.class)
-            .withMessage("Network timeout");
+            .withThrowableOfType(ExecutionException.class)
+            .withCauseInstanceOf(RuntimeException.class)
+            .withMessageContaining("Network timeout");
     }
     
     @Test

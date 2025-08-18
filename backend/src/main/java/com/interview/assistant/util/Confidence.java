@@ -215,7 +215,7 @@ public class Confidence {
             throw new IllegalArgumentException("Confidence value cannot be NaN or infinite");
         }
         if (value < 0.0 || value > 1.0) {
-            throw new IllegalArgumentException("Confidence value must be between 0.0 and 1.0");
+            throw new IllegalArgumentException("Confidence must be between 0.0 and 1.0");
         }
     }
     

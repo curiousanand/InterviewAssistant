@@ -253,14 +253,14 @@ class WebSocketSessionManagerTest {
         sessionManager.cleanupInactiveSessions(45 * 60 * 1000); // 45 minutes in ms
         
         // Then
-        assertThat(sessionManager.getActiveSessionCount()).isEqualTo(1);
+        assertThat(sessionManager.getActiveSessionCount()).isEqualTo(2);
         assertThat(sessionManager.getSession(sessionId1)).isNull(); // Should be removed (1 hour old)
-        assertThat(sessionManager.getSession(sessionId2)).isNull(); // Should be removed (30 min old, but limit was 45 min)
+        assertThat(sessionManager.getSession(sessionId2)).isEqualTo(mockSession2); // Should remain (30 min old < 45 min limit)
         assertThat(sessionManager.getSession(sessionId3)).isEqualTo(mockSession3); // Should remain (recent)
-        assertThat(sessionManager.getAuthenticatedSessionCount()).isEqualTo(0); // Auth sessions should be cleaned up
+        assertThat(sessionManager.getAuthenticatedSessionCount()).isEqualTo(1); // Session2 still authenticated
         
         verify(mockSession1).close();
-        verify(mockSession2).close();
+        verify(mockSession2, never()).close(); // Session2 should not be closed
         verify(mockSession3, never()).close();
     }
     

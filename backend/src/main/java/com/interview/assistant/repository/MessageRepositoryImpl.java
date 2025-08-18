@@ -54,7 +54,7 @@ public class MessageRepositoryImpl implements IMessageRepository {
     public List<Message> findBySessionId(String sessionId) {
         return messages.values().stream()
                 .filter(message -> message.getSession() != null && sessionId.equals(message.getSession().getId()))
-                .sorted(Comparator.comparing(Message::getCreatedAt))
+                .sorted(Comparator.comparing(Message::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
     }
     

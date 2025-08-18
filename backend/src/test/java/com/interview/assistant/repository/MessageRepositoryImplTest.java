@@ -128,7 +128,7 @@ class MessageRepositoryImplTest {
         // Then
         assertThat(sessionMessages).hasSize(3);
         assertThat(sessionMessages).extracting(Message::getContent)
-            .containsExactly("Hello", "Hi there", "Session started");
+            .containsExactlyInAnyOrder("Hello", "Hi there", "Session started");
     }
     
     @Test

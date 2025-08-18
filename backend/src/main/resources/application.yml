@@ -94,11 +94,12 @@ management:
 azure:
   speech:
     key: ${AZURE_SPEECH_KEY:your-key-here}
-    region: ${AZURE_SPEECH_REGION:eastus}
+    region: ${AZURE_SPEECH_REGION:centralindia}
+    endpoint: ${AZURE_SPEECH_ENDPOINT:}
     # Language detection configuration
     auto-detect:
       enabled: true
-      languages: en-US,es-ES,hi-IN,fr-FR,de-DE,zh-CN,ja-JP
+      languages: en-US,hi-IN,en-IN,es-ES,fr-FR,de-DE,zh-CN,ja-JP
     # Audio format configuration
     audio:
       format: pcm

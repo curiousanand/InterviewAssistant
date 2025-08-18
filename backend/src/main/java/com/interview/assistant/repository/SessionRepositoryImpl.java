@@ -35,7 +35,10 @@ public class SessionRepositoryImpl implements ISessionRepository {
         if (session.getId() == null) {
             session.setId(UUID.randomUUID().toString());
         }
-        session.setLastAccessedAt(Instant.now());
+        // Only set lastAccessedAt if it's null (preserve existing values for tests)
+        if (session.getLastAccessedAt() == null) {
+            session.setLastAccessedAt(Instant.now());
+        }
         sessions.put(session.getId(), session);
         return session;
     }

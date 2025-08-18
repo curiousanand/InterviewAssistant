@@ -78,6 +78,7 @@ public class ValidationHandler {
                 return validateAudioPayload(message.getPayload());
             case SESSION_START:
             case SESSION_END:
+            case SESSION_READY:
                 return ValidationResult.valid(); // No payload validation needed
             case TRANSCRIPT_PARTIAL:
             case TRANSCRIPT_FINAL:
@@ -114,7 +115,7 @@ public class ValidationHandler {
         }
         
         if (audioData.length > MAX_AUDIO_CHUNK_SIZE) {
-            return ValidationResult.invalid("Audio chunk exceeds maximum size");
+            return ValidationResult.invalid("Audio chunk size exceeds maximum allowed");
         }
         
         return ValidationResult.valid();

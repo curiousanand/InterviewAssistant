@@ -170,11 +170,16 @@ class AudioFormatTest {
         assertThat(suitable2.isSuitableForSpeechRecognition()).isTrue();
         assertThat(suitable3.isSuitableForSpeechRecognition()).isTrue();
         
-        // Unsuitable formats
-        AudioFormat unsuitable1 = AudioFormat.of(7999, 1, 16, "PCM"); // Would fail validation
-        AudioFormat unsuitable2 = AudioFormat.of(16000, 9, 16, "PCM"); // Would fail validation
+        // Test that invalid formats throw validation exceptions
+        assertThatThrownBy(() -> AudioFormat.of(7999, 1, 16, "PCM"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Sample rate must be between");
+            
+        assertThatThrownBy(() -> AudioFormat.of(16000, 9, 16, "PCM"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Channels must be");
         
-        // These would fail during construction, so we test with valid but unsuitable formats
+        // Test with valid but unsuitable format
         AudioFormat borderline = AudioFormat.of(48001, 1, 16, "PCM"); // Just above 48kHz
         assertThat(borderline.isSuitableForSpeechRecognition()).isFalse();
     }
@@ -231,7 +236,7 @@ class AudioFormatTest {
     @DisplayName("Should provide human readable description")
     void shouldProvideHumanReadableDescription() {
         AudioFormat mono = AudioFormat.of(16000, 1, 16, "PCM");
-        AudioFormat stereo = AudioFormat.of(44100, 2, 24, "PCM");
+        AudioFormat stereo = AudioFormat.of(44100, 2, 24, "FLAC");
         AudioFormat surround = AudioFormat.of(48000, 6, 32, "FLAC");
         
         assertThat(mono.getDescription()).isEqualTo("PCM 16000Hz Mono 16-bit");

@@ -46,21 +46,30 @@ export function ChatArea({
             />
           ))}
 
-          {/* Current Transcript (Partial) */}
+          {/* Current Transcript (Partial) - Enhanced for visibility */}
           {currentTranscript && (
             <div className="flex justify-end mb-4">
               <div className="flex items-start space-x-3 max-w-3xl w-full">
                 <div className="flex-1 flex justify-end">
-                  <div className="bg-primary/50 text-primary-foreground px-4 py-3 rounded-lg ml-12 rounded-br-sm opacity-80">
-                    <div className="break-words whitespace-pre-wrap leading-relaxed">
-                      {currentTranscript}
-                      <span className="inline-block w-2 h-4 bg-current opacity-50 animate-pulse ml-1" />
+                  <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white px-4 py-3 rounded-lg ml-12 rounded-br-sm shadow-lg border-2 border-blue-400 animate-pulse-subtle">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <div className="text-xs font-medium text-blue-100">Live Transcription</div>
                     </div>
-                    <div className="text-xs mt-1 opacity-70">Speaking...</div>
+                    <div className="break-words whitespace-pre-wrap leading-relaxed text-base">
+                      {currentTranscript}
+                      <span className="inline-block w-2 h-5 bg-white opacity-75 animate-pulse ml-1" />
+                    </div>
+                    <div className="text-xs mt-2 text-blue-100 flex items-center space-x-1">
+                      <svg className="w-3 h-3 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                      <span>Listening & transcribing...</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                  <span className="text-sm font-medium text-primary-foreground">U</span>
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                  <span className="text-sm font-medium text-white">U</span>
                 </div>
               </div>
             </div>

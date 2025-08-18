@@ -1,40 +1,60 @@
 import { IAudioCapture } from '../audio/interfaces/IAudioCapture';
 import { AudioCaptureFactory } from '../audio/AudioCaptureFactory';
 import { InterviewWebSocketClient } from '../websocket/InterviewWebSocketClient';
-import { RecordingState, VADResult } from '../../types';
+import { VoiceActivityDetector } from '../audio/VoiceActivityDetector';
+import { TranscriptBufferManager } from '../conversation/TranscriptBufferManager';
+import { 
+  RecordingState, 
+  VADResult, 
+  VADConfig,
+  TranscriptEvent,
+  PauseClassification,
+  WebSocketMessage,
+  WebSocketMessageType
+} from '../../types';
 
 /**
- * Audio streaming service for real-time audio capture and WebSocket streaming
+ * Enhanced audio streaming service with real-time conversation orchestration
  * 
- * Why: Coordinates audio capture with WebSocket streaming to backend
- * Pattern: Service Layer - orchestrates multiple components
- * Rationale: Provides high-level audio streaming interface for UI components
+ * Why: Coordinates audio capture, VAD, transcript buffering, and conversation flow
+ * Pattern: Event-driven orchestration - manages complex audio->conversation pipeline
+ * Rationale: Core service for real-time multimodal conversation system
  */
 export class AudioStreamingService {
   private audioCapture: IAudioCapture | null = null;
   private wsClient: InterviewWebSocketClient;
+  private vadDetector: VoiceActivityDetector;
+  private transcriptBufferManager: TranscriptBufferManager;
+  
   private recordingState: RecordingState = {
     isRecording: false,
     isProcessing: false,
     audioLevel: 0
   };
   
-  // Audio processing (handled by AudioCapture implementations)
-  
-  // Streaming configuration
+  // Audio processing configuration
   private readonly SAMPLE_RATE = 16000; // 16kHz for Azure Speech
   private readonly CHANNELS = 1; // Mono
-  private readonly CHUNK_DURATION = 100; // 100ms chunks
-  private readonly SILENCE_THRESHOLD = 0.01; // Voice activity detection threshold
+  private readonly CHUNK_DURATION = 100; // 100ms chunks for low latency
+  private readonly AUDIO_BUFFER_SIZE = 1024; // Buffer size for processing
+  
+  // Conversation orchestration state
+  private isListeningContinuously = false;
+  private currentSessionId = '';
+  private lastTranscriptTime = 0;
+  private pauseDetectionEnabled = true;
   
   // Event handlers
   private onStateChange: ((state: RecordingState) => void) | undefined;
   private onVADResult: ((result: VADResult) => void) | undefined;
+  private onTranscriptUpdate: ((event: TranscriptEvent) => void) | undefined;
+  private onPauseDetected: ((classification: PauseClassification) => void) | undefined;
   private onError: ((error: string) => void) | undefined;
   
-  // Audio level monitoring
+  // Audio monitoring
   private audioLevelInterval: NodeJS.Timeout | null = null;
   private audioDataBuffer: Float32Array[] = [];
+  private audioChunkCounter = 0;
 
   constructor(wsClient: InterviewWebSocketClient) {
     this.wsClient = wsClient;
@@ -80,13 +100,11 @@ export class AudioStreamingService {
       this.updateRecordingState({ isProcessing: false });
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize audio';
-      console.error('Audio initialization failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initialize enhanced audio system';
+      console.error('Enhanced audio initialization failed:', error);
       this.updateRecordingState({ isProcessing: false, error: errorMessage });
       
-      if (this.onError) {
-        this.onError(errorMessage);
-      }
+      this.onError?.(errorMessage);
       throw error;
     }
   }
@@ -513,5 +531,376 @@ export class AudioStreamingService {
       wsConnected: this.wsClient.isConnected(),
       audioCapabilities: capabilities
     };
+  }
+
+  // ============================================================================
+  // ENHANCED CONVERSATION ORCHESTRATION METHODS
+  // ============================================================================
+
+  /**
+   * Setup event handlers for conversation orchestration
+   */
+  private setupEventHandlers(): void {
+    // VAD event handlers
+    this.vadDetector.onActivityChange((result) => {
+      this.handleVADResult(result);
+    });
+
+    this.vadDetector.onSilenceDetected((duration) => {
+      this.handleSilenceDetected(duration);
+    });
+
+    this.vadDetector.onSpeechDetected(() => {
+      this.handleSpeechDetected();
+    });
+
+    // Transcript buffer event handlers
+    this.transcriptBufferManager.onLiveUpdate((text, confidence) => {
+      this.onTranscriptUpdate?.({
+        type: 'interim',
+        text,
+        confidence,
+        timestamp: Date.now(),
+        sessionId: this.currentSessionId
+      });
+    });
+
+    this.transcriptBufferManager.onConfirmed((text, confidence) => {
+      this.onTranscriptUpdate?.({
+        type: 'final',
+        text,
+        confidence,
+        timestamp: Date.now(),
+        sessionId: this.currentSessionId
+      });
+
+      // Trigger conversation processing after confirmed transcript
+      this.triggerConversationProcessing(text, confidence);
+    });
+  }
+
+  /**
+   * Setup WebSocket handlers for transcript processing
+   */
+  private setupWebSocketHandlers(): void {
+    this.wsClient.onMessage((message) => {
+      if (!message) return;
+
+      try {
+        const wsMessage = typeof message === 'string' ? JSON.parse(message) : message;
+        this.handleWebSocketMessage(wsMessage);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    });
+  }
+
+  /**
+   * Handle WebSocket messages from backend
+   */
+  private handleWebSocketMessage(message: WebSocketMessage): void {
+    switch (message.type) {
+      case WebSocketMessageType.TRANSCRIPT_PARTIAL:
+        if (message.payload?.text) {
+          this.transcriptBufferManager.processInterimTranscript(
+            message.payload.text,
+            message.payload.confidence || 0.8,
+            message.sessionId
+          );
+        }
+        break;
+
+      case WebSocketMessageType.TRANSCRIPT_FINAL:
+        if (message.payload?.text) {
+          this.transcriptBufferManager.processFinalTranscript(
+            message.payload.text,
+            message.payload.confidence || 0.9,
+            message.sessionId
+          );
+        }
+        break;
+
+      case WebSocketMessageType.ASSISTANT_DELTA:
+        // Handle streaming AI response
+        this.handleAIResponseChunk(message.payload);
+        break;
+
+      case WebSocketMessageType.ASSISTANT_DONE:
+        // AI response complete
+        this.handleAIResponseComplete(message.payload);
+        break;
+
+      case WebSocketMessageType.ERROR:
+        this.onError?.(`Backend error: ${message.payload?.message || 'Unknown error'}`);
+        break;
+
+      default:
+        console.log('Unhandled WebSocket message type:', message.type);
+    }
+  }
+
+  /**
+   * Enhanced audio processing with VAD and conversation flow
+   */
+  private processAudioChunk(audioData: Float32Array): void {
+    try {
+      this.audioChunkCounter++;
+
+      // Update audio buffer for monitoring
+      this.audioDataBuffer.push(audioData);
+      if (this.audioDataBuffer.length > 20) {
+        this.audioDataBuffer.shift(); // Keep only recent chunks
+      }
+
+      // Process through VAD
+      const vadResult = this.vadDetector.processAudioData(audioData);
+      
+      // Update audio level in recording state
+      this.updateRecordingState({ audioLevel: vadResult.energy });
+
+      // Stream to backend if recording
+      if (this.recordingState.isRecording) {
+        this.streamAudioToBackend(audioData);
+      }
+
+    } catch (error) {
+      console.error('Error processing audio chunk:', error);
+      this.onError?.('Error processing audio data');
+    }
+  }
+
+  /**
+   * Stream audio data to backend with optimizations
+   */
+  private async streamAudioToBackend(audioData: Float32Array): Promise<void> {
+    try {
+      // Convert to PCM16 for backend processing
+      const pcmData = this.convertToPCM16(audioData);
+      
+      // Send to WebSocket (backend expects binary data)
+      await this.wsClient.sendAudioData(pcmData.buffer);
+
+      // Throttle logging to avoid spam
+      if (this.audioChunkCounter % 10 === 0) {
+        console.log(`Streamed audio chunk #${this.audioChunkCounter} (${pcmData.length} samples)`);
+      }
+
+    } catch (error) {
+      console.error('Error streaming audio to backend:', error);
+      // Don't propagate streaming errors to avoid disrupting recording
+    }
+  }
+
+  /**
+   * Handle VAD results
+   */
+  private handleVADResult(result: VADResult): void {
+    this.onVADResult?.(result);
+
+    // Check for pause patterns
+    if (!result.hasSpeech && result.silenceDuration > 0) {
+      const classification = this.classifyPause(result.silenceDuration);
+      if (classification.shouldTriggerAI) {
+        this.onPauseDetected?.(classification);
+      }
+    }
+  }
+
+  /**
+   * Handle silence detection
+   */
+  private handleSilenceDetected(duration: number): void {
+    console.log(`Silence detected: ${duration}ms`);
+    
+    // Notify transcript buffer manager
+    this.transcriptBufferManager.onSilenceDetected(duration);
+
+    // Emit transcript event
+    this.onTranscriptUpdate?.({
+      type: 'silence',
+      text: '',
+      confidence: 1.0,
+      timestamp: Date.now(),
+      sessionId: this.currentSessionId
+    });
+
+    // Classify pause and potentially trigger AI processing
+    const classification = this.classifyPause(duration);
+    this.onPauseDetected?.(classification);
+  }
+
+  /**
+   * Handle speech detection
+   */
+  private handleSpeechDetected(): void {
+    console.log('Speech detected - resuming transcription');
+    
+    // Notify transcript buffer manager
+    this.transcriptBufferManager.onSpeechDetected();
+
+    // Emit transcript event
+    this.onTranscriptUpdate?.({
+      type: 'speech',
+      text: '',
+      confidence: 1.0,
+      timestamp: Date.now(),
+      sessionId: this.currentSessionId
+    });
+  }
+
+  /**
+   * Classify pause duration for conversation flow
+   */
+  private classifyPause(duration: number): PauseClassification {
+    let type: 'natural_gap' | 'end_of_thought' | 'waiting_for_response';
+    let shouldTriggerAI = false;
+    let confidence = 0.8;
+
+    if (duration < 1000) {
+      type = 'natural_gap';
+      shouldTriggerAI = false;
+      confidence = 0.9;
+    } else if (duration < 3000) {
+      type = 'end_of_thought';
+      shouldTriggerAI = true;
+      confidence = 0.85;
+    } else {
+      type = 'waiting_for_response';
+      shouldTriggerAI = true;
+      confidence = 0.95;
+    }
+
+    return {
+      type,
+      duration,
+      confidence,
+      shouldTriggerAI
+    };
+  }
+
+  /**
+   * Trigger conversation processing after confirmed transcript
+   */
+  private triggerConversationProcessing(text: string, confidence: number): void {
+    if (!text.trim()) return;
+
+    console.log('Triggering conversation processing for:', text);
+
+    // Get full context from buffer manager
+    const context = this.transcriptBufferManager.getContextForAI();
+    
+    // This would typically trigger backend AI processing
+    // For now, we'll emit an event that the UI can handle
+    this.onTranscriptUpdate?.({
+      type: 'final',
+      text: context.confirmedText,
+      confidence: context.confidence,
+      timestamp: Date.now(),
+      sessionId: this.currentSessionId
+    });
+  }
+
+  /**
+   * Handle AI response chunks (streaming)
+   */
+  private handleAIResponseChunk(payload: any): void {
+    console.log('Received AI response chunk:', payload);
+    // Could emit events for real-time AI response display
+  }
+
+  /**
+   * Handle AI response completion
+   */
+  private handleAIResponseComplete(payload: any): void {
+    console.log('AI response complete:', payload);
+    // Clear confirmed buffer after processing
+    this.transcriptBufferManager.clearConfirmedBuffer();
+  }
+
+  /**
+   * Start continuous listening mode
+   */
+  async startContinuousListening(): Promise<void> {
+    if (this.isListeningContinuously) {
+      return;
+    }
+
+    this.isListeningContinuously = true;
+    this.pauseDetectionEnabled = true;
+
+    console.log('Starting continuous listening mode...');
+    await this.startRecording();
+  }
+
+  /**
+   * Stop continuous listening mode
+   */
+  async stopContinuousListening(): Promise<void> {
+    this.isListeningContinuously = false;
+    this.pauseDetectionEnabled = false;
+
+    console.log('Stopping continuous listening mode...');
+    await this.stopRecording();
+
+    // Archive any remaining content
+    const archived = this.transcriptBufferManager.archiveAndReset();
+    if (archived) {
+      console.log('Archived transcript:', archived);
+    }
+  }
+
+  /**
+   * Get current conversation state
+   */
+  getConversationState(): {
+    isListeningContinuously: boolean;
+    currentTranscript: string;
+    vadState: any;
+    bufferStats: any;
+  } {
+    return {
+      isListeningContinuously: this.isListeningContinuously,
+      currentTranscript: this.transcriptBufferManager.getFullTranscript(),
+      vadState: this.vadDetector.getCurrentState(),
+      bufferStats: this.transcriptBufferManager.getBufferStats()
+    };
+  }
+
+  /**
+   * Update VAD configuration
+   */
+  updateVADConfig(config: Partial<VADConfig>): void {
+    this.vadDetector.updateConfig(config);
+  }
+
+  // Enhanced event handler setters
+  onTranscriptUpdate(handler: (event: TranscriptEvent) => void): void {
+    this.onTranscriptUpdate = handler;
+  }
+
+  onPauseDetected(handler: (classification: PauseClassification) => void): void {
+    this.onPauseDetected = handler;
+  }
+
+  /**
+   * Enhanced cleanup with conversation orchestration
+   */
+  async enhancedCleanup(): Promise<void> {
+    await this.cleanup();
+    
+    // Cleanup VAD and buffer manager
+    this.vadDetector.cleanup();
+    this.transcriptBufferManager.cleanup();
+    
+    // Reset conversation state
+    this.isListeningContinuously = false;
+    this.currentSessionId = '';
+    this.lastTranscriptTime = 0;
+    this.pauseDetectionEnabled = false;
+    this.audioChunkCounter = 0;
+    
+    // Clear enhanced event handlers
+    this.onTranscriptUpdate = undefined;
+    this.onPauseDetected = undefined;
   }
 }

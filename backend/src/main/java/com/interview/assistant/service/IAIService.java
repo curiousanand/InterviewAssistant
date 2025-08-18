@@ -1,5 +1,7 @@
 package com.interview.assistant.service;
 
+import com.interview.assistant.model.ConversationMessage;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -34,6 +36,16 @@ public interface IAIService {
      */
     CompletableFuture<AIResponse> generateStreamingResponse(String sessionId, String userMessage, 
                                                           String language, StreamingCallback callback);
+    
+    /**
+     * Generate streaming response with conversation context
+     * Why: Enhanced conversation processing with full context
+     * 
+     * @param request Chat request with conversation context
+     * @param callback Callback for streaming response tokens
+     * @return Future indicating processing status
+     */
+    CompletableFuture<Void> generateStreamingResponse(ChatRequest request, StreamingCallback callback);
     
     /**
      * Get conversation summary for context management
@@ -80,6 +92,14 @@ public interface IAIService {
         void onToken(String token);
         void onComplete(AIResponse response);
         void onError(String error);
+        
+        // Enhanced streaming methods for conversation orchestration
+        default void onTokenReceived(String token, boolean isComplete) {
+            onToken(token);
+            if (isComplete) {
+                onComplete(null); // Called with complete response elsewhere
+            }
+        }
     }
     
     /**
@@ -91,5 +111,55 @@ public interface IAIService {
         int getMaxTokens();
         double getTemperature();
         String getEndpoint();
+    }
+    
+    /**
+     * Chat request data model for enhanced conversation processing
+     */
+    class ChatRequest {
+        private final List<ConversationMessage> messages;
+        private final String systemPrompt;
+        private final boolean enableStreaming;
+        private final String model;
+        private final double temperature;
+        private final int maxTokens;
+        
+        public ChatRequest(List<ConversationMessage> messages, String systemPrompt, boolean enableStreaming) {
+            this(messages, systemPrompt, enableStreaming, "gpt-3.5-turbo", 0.7, 1000);
+        }
+        
+        public ChatRequest(List<ConversationMessage> messages, String systemPrompt, boolean enableStreaming,
+                          String model, double temperature, int maxTokens) {
+            this.messages = messages != null ? List.copyOf(messages) : List.of();
+            this.systemPrompt = systemPrompt != null ? systemPrompt : "";
+            this.enableStreaming = enableStreaming;
+            this.model = model != null ? model : "gpt-3.5-turbo";
+            this.temperature = Math.max(0.0, Math.min(2.0, temperature));
+            this.maxTokens = Math.max(1, maxTokens);
+        }
+        
+        public List<ConversationMessage> getMessages() { return messages; }
+        public String getSystemPrompt() { return systemPrompt; }
+        public boolean isStreamingEnabled() { return enableStreaming; }
+        public String getModel() { return model; }
+        public double getTemperature() { return temperature; }
+        public int getMaxTokens() { return maxTokens; }
+        
+        public int getMessageCount() {
+            return messages.size();
+        }
+        
+        public int getTotalTokenEstimate() {
+            // Rough estimation: 4 characters per token
+            int totalChars = systemPrompt.length() + 
+                messages.stream().mapToInt(msg -> msg.getContent().length()).sum();
+            return totalChars / 4;
+        }
+        
+        @Override
+        public String toString() {
+            return String.format("ChatRequest{messages=%d, model=%s, streaming=%s, tokens~%d}", 
+                getMessageCount(), model, enableStreaming, getTotalTokenEstimate());
+        }
     }
 }

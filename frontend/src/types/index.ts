@@ -128,6 +128,83 @@ export interface RecordingState {
   error?: string | null;
 }
 
+// Voice Activity Detection types
+export interface VADConfig {
+  silenceThreshold: number;
+  silenceDuration: number;
+  energyThreshold: number;
+  minSpeechDuration?: number;
+  adaptiveThreshold?: boolean;
+}
+
+export interface VADResult {
+  hasSpeech: boolean;
+  energy: number;
+  threshold: number;
+  silenceDuration: number;
+  speechDuration: number;
+  timestamp: number;
+}
+
+// Conversation orchestration types
+export interface TranscriptSegment {
+  text: string;
+  confidence: number;
+  timestamp: number;
+  startTime: number;
+  endTime: number;
+}
+
+export interface TranscriptBuffer {
+  text: string;
+  confidence: number;
+  timestamp: number;
+  sessionId: string;
+  segments: TranscriptSegment[];
+}
+
+export type BufferState = 'idle' | 'listening' | 'paused' | 'confirmed' | 'processing';
+
+export interface TranscriptEvent {
+  type: 'interim' | 'final' | 'silence' | 'speech';
+  text: string;
+  confidence: number;
+  timestamp: number;
+  sessionId: string;
+}
+
+// Conversation context types
+export interface ConversationContext {
+  userHistory: string[];
+  aiHistory: string[];
+  currentTopic: string;
+  entities: string[];
+  metadata: Record<string, any>;
+  lastInteraction: number;
+}
+
+export interface PauseClassification {
+  type: 'natural_gap' | 'end_of_thought' | 'waiting_for_response';
+  duration: number;
+  confidence: number;
+  shouldTriggerAI: boolean;
+}
+
+// Response streaming types
+export interface AIResponseChunk {
+  token: string;
+  isComplete: boolean;
+  confidence?: number;
+  timestamp: number;
+}
+
+export interface StreamingResponse {
+  chunks: AIResponseChunk[];
+  isComplete: boolean;
+  totalTokens: number;
+  processingTime: number;
+}
+
 // Language options
 export interface LanguageOption {
   code: string;

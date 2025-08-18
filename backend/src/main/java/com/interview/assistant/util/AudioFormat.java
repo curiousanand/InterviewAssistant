@@ -148,6 +148,7 @@ public class AudioFormat {
     public boolean isCompatibleWith(AudioFormat other) {
         return this.encoding.equals(other.encoding) &&
                this.sampleRate == other.sampleRate &&
+               this.channels == other.channels &&
                this.bitsPerSample == other.bitsPerSample;
     }
     

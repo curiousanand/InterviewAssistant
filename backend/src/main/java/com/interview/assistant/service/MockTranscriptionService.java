@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture;
  * Rationale: Allows testing of application flow without Azure Speech Services
  */
 @Service
-@Profile("!test")
+@Profile("test")
 public class MockTranscriptionService implements ITranscriptionService {
     
     @Override

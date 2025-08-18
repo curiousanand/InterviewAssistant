@@ -142,6 +142,7 @@ public class Message {
         message.role = MessageRole.SYSTEM;
         message.content = content.trim();
         message.status = ProcessingStatus.COMPLETED;
+        message.createdAt = Instant.now();
         return message;
     }
     
