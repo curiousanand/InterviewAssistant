@@ -1,6 +1,6 @@
 package com.interview.assistant.config;
 
-import com.interview.assistant.websocket.StreamingWebSocketHandler;
+import com.interview.assistant.websocket.RealTimeWebSocketHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -9,22 +9,30 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 
 /**
  * Production WebSocket configuration for Interview Assistant
- * Configures WebSocket endpoints for real-time communication
+ * Configures WebSocket endpoints for real-time multimodal conversation
+ * 
+ * Uses the enhanced RealTimeWebSocketHandler with full orchestration:
+ * - Voice Activity Detection
+ * - Dual-buffer transcript management
+ * - Smart pause detection  
+ * - AI response interruption
+ * - Streaming AI responses
  */
 @Configuration
 @EnableWebSocket
 @Profile("!test")
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    private final StreamingWebSocketHandler streamingHandler;
+    private final RealTimeWebSocketHandler realTimeHandler;
 
-    public WebSocketConfig(StreamingWebSocketHandler streamingHandler) {
-        this.streamingHandler = streamingHandler;
+    public WebSocketConfig(RealTimeWebSocketHandler realTimeHandler) {
+        this.realTimeHandler = realTimeHandler;
     }
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(streamingHandler, "/ws/stream")
+        // Main real-time conversation endpoint
+        registry.addHandler(realTimeHandler, "/ws/stream")
                 .setAllowedOrigins("*"); // Allow frontend connections
     }
 }
