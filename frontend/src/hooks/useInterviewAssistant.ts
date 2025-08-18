@@ -38,6 +38,16 @@ export function useInterviewAssistant() {
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [currentAssistantResponse, setCurrentAssistantResponse] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  // Auto-clear errors after 5 seconds for non-critical issues
+  const setTemporaryError = useCallback((errorMessage: string | null) => {
+    setError(errorMessage);
+    if (errorMessage) {
+      setTimeout(() => {
+        setError(null);
+      }, 5000);
+    }
+  }, []);
 
   // Initialize services once
   useEffect(() => {
@@ -55,6 +65,8 @@ export function useInterviewAssistant() {
     }
 
     try {
+      setError(null); // Clear any previous errors
+      
       // Setup event handlers
       setupEventHandlers();
 
@@ -62,8 +74,13 @@ export function useInterviewAssistant() {
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws/stream';
       await wsClientRef.current.connect(wsUrl);
 
-      // Initialize audio streaming
-      await audioServiceRef.current.initialize();
+      // Initialize audio streaming with better error handling
+      try {
+        await audioServiceRef.current.initialize();
+      } catch (audioError) {
+        console.warn('Audio initialization failed (will continue without audio):', audioError);
+        // Don't fail the entire initialization for audio issues
+      }
 
       setIsInitialized(true);
       setError(null);
@@ -73,6 +90,7 @@ export function useInterviewAssistant() {
         await conversationServiceRef.current.createSession(language, autoDetect);
       } catch (sessionError) {
         console.warn('Session creation failed, will retry on first interaction:', sessionError);
+        // Don't show error to user for initial session creation failure
       }
     } catch (error) {
       console.error('Failed to initialize application:', error);
@@ -93,7 +111,13 @@ export function useInterviewAssistant() {
     });
 
     wsClientRef.current.onErrorOccurred((error) => {
-      setError(error);
+      console.warn('WebSocket error:', error);
+      // Only show persistent errors for connection issues
+      if (error.includes('connection') || error.includes('connect')) {
+        setError(error);
+      } else {
+        setTemporaryError(error);
+      }
     });
 
     // Audio streaming events  
@@ -102,7 +126,13 @@ export function useInterviewAssistant() {
     });
 
     audioServiceRef.current.onErrorOccurred((error) => {
-      setError(error);
+      console.warn('Audio service error:', error);
+      // Show microphone permission errors persistently, others temporarily
+      if (error.includes('permission') || error.includes('microphone')) {
+        setError(error);
+      } else {
+        setTemporaryError(error);
+      }
     });
 
     // Conversation events
@@ -131,14 +161,16 @@ export function useInterviewAssistant() {
     });
 
     conversationServiceRef.current.onErrorOccurred((error) => {
-      setError(error);
+      console.warn('Conversation service error:', error);
+      setTemporaryError(error);
     });
   }, []);
 
   // Start recording
   const startRecording = useCallback(async () => {
     if (!audioServiceRef.current || !conversationServiceRef.current) {
-      throw new Error('Services not initialized');
+      setError('Services not initialized');
+      return;
     }
 
     if (connectionState.status !== 'connected') {
@@ -147,6 +179,8 @@ export function useInterviewAssistant() {
     }
 
     try {
+      setError(null); // Clear any previous errors
+      
       // Ensure session exists
       if (!currentSession) {
         await conversationServiceRef.current.createSession('en-US', true);

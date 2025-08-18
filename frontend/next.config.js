@@ -8,10 +8,11 @@ const nextConfig = {
   // Enable React strict mode for better development experience
   reactStrictMode: true,
   
+  // Server external packages (moved from experimental in Next.js 15)
+  serverExternalPackages: [],
+  
   // Experimental features for better performance
   experimental: {
-    // Enable server components optimization
-    serverComponentsExternalPackages: [],
     // Optimize font loading
     optimizeCss: true,
   },
@@ -111,8 +112,7 @@ const nextConfig = {
   // Output configuration
   output: 'standalone',
   
-  // Performance optimizations
-  swcMinify: true,
+  // Performance optimizations (swcMinify is enabled by default in Next.js 15)
   compiler: {
     // Remove console.log in production
     removeConsole: process.env.NODE_ENV === 'production',

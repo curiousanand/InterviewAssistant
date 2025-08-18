@@ -5,6 +5,7 @@
 
 import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'util';
+import { mockWebAudioAPI, MockAudioCaptureFactory } from './audio-mocks';
 
 // Polyfills for Node environment
 global.TextEncoder = TextEncoder;
@@ -61,32 +62,16 @@ class MockWebSocket {
 
 global.WebSocket = MockWebSocket as any;
 
-// Mock Audio API
-global.AudioContext = jest.fn().mockImplementation(() => ({
-  createMediaStreamSource: jest.fn(),
-  createScriptProcessor: jest.fn(() => ({
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-  })),
-  close: jest.fn(),
-  sampleRate: 48000,
+// Mock AudioCaptureFactory
+jest.mock('../../src/lib/audio/AudioCaptureFactory', () => ({
+  AudioCaptureFactory: MockAudioCaptureFactory,
 }));
 
-global.MediaStream = jest.fn();
+// Initialize Web Audio API mocks
+mockWebAudioAPI();
 
-// Mock navigator.mediaDevices
-Object.defineProperty(navigator, 'mediaDevices', {
-  value: {
-    getUserMedia: jest.fn().mockResolvedValue({
-      getTracks: () => [],
-      getAudioTracks: () => [{
-        stop: jest.fn(),
-        enabled: true,
-      }],
-    }),
-    enumerateDevices: jest.fn().mockResolvedValue([]),
-  },
-});
+// Mock scrollIntoView for testing
+Element.prototype.scrollIntoView = jest.fn();
 
 // Suppress console errors in tests (optional)
 const originalError = console.error;

@@ -19,8 +19,7 @@ export function SimpleMicrophoneButton({
   
   const isRecording = recordingState?.isRecording === true;
   
-  const handleClick = () => {
-    console.log('Button clicked, isRecording:', isRecording);
+  const handleAction = () => {
     if (disabled) return;
     
     if (isRecording) {
@@ -29,11 +28,21 @@ export function SimpleMicrophoneButton({
       onStartRecording();
     }
   };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleAction();
+    }
+  };
   
   return (
     <div className="flex flex-col items-center space-y-3">
       <button
-        onClick={handleClick}
+        data-testid="microphone-button"
+        aria-label={isRecording ? "Stop recording" : "Start recording"}
+        onClick={handleAction}
+        onKeyDown={handleKeyDown}
         disabled={disabled}
         className={`
           w-20 h-20 rounded-full transition-all duration-200 
@@ -76,11 +85,6 @@ export function SimpleMicrophoneButton({
         </div>
       )}
       
-      {/* Debug info */}
-      <div className="text-xs text-gray-400">
-        Debug: isRecording={String(isRecording)} | 
-        raw={String(recordingState?.isRecording)}
-      </div>
     </div>
   );
 }

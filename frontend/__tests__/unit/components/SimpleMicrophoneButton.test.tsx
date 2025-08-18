@@ -112,7 +112,7 @@ describe('SimpleMicrophoneButton', () => {
       const button = screen.getByRole('button');
       fireEvent.click(button);
       
-      expect(consoleSpy).toHaveBeenCalledWith('Button clicked, isRecording:', false);
+      expect(consoleSpy).toHaveBeenCalledWith('Button activated, isRecording:', false);
       
       consoleSpy.mockRestore();
     });
