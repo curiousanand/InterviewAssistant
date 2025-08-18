@@ -6,7 +6,8 @@
       "Bash(npx playwright test:*)",
       "Bash(npx playwright:*)",
       "Bash(git rm:*)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(mvn test*)"
     ],
     "deny": [],
     "ask": []

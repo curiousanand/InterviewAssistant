@@ -24,18 +24,18 @@ public class DevSecurityConfig {
     @Bean
     public SecurityFilterChain devFilterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(authz -> authz
-                .anyRequest().permitAll() // Allow all requests in development
-            )
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for development
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Enable CORS
-            .headers(headers -> headers
-                .frameOptions().sameOrigin() // Allow H2 console frames
-            );
-        
+                .authorizeHttpRequests(authz -> authz
+                        .anyRequest().permitAll() // Allow all requests in development
+                )
+                .csrf(csrf -> csrf.disable()) // Disable CSRF for development
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Enable CORS
+                .headers(headers -> headers
+                        .frameOptions().sameOrigin() // Allow H2 console frames
+                );
+
         return http.build();
     }
-    
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -44,7 +44,7 @@ public class DevSecurityConfig {
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

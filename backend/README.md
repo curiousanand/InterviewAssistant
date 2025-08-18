@@ -1,6 +1,7 @@
 # Interview Assistant - Backend
 
-Spring Boot backend application providing WebSocket-based real-time communication, Azure service integration, and session management.
+Spring Boot backend application providing WebSocket-based real-time communication, Azure service integration, and
+session management.
 
 ## Architecture
 
@@ -18,21 +19,25 @@ The backend follows a layered architecture with clear separation of concerns:
 ## Key Components
 
 ### Presentation Layer
+
 - `StreamingWebSocketHandler` - Main WebSocket endpoint with chain of responsibility
 - `HealthController` - System health monitoring
 - `SessionController` - RESTful session management
 
-### Application Layer  
+### Application Layer
+
 - `StartConversationUseCase` - Initialize conversation sessions
 - `ProcessAudioUseCase` - Handle audio processing workflow
 - `GenerateResponseUseCase` - Coordinate AI response generation
 
 ### Domain Layer
+
 - `Session` - Core session aggregate
 - `Message` - Message entity with metadata
 - `ConversationMemoryService` - Conversation context management
 
 ### Infrastructure Layer
+
 - `AzureSpeechServiceAdapter` - Azure Speech Services integration
 - `AzureOpenAIServiceAdapter` - Azure OpenAI integration
 - `H2SessionRepository` - Session persistence
@@ -48,6 +53,7 @@ The backend follows a layered architecture with clear separation of concerns:
 ## Setup
 
 ### Prerequisites
+
 - Java 17+
 - Maven 3.8+
 - Azure credentials

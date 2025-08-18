@@ -15,13 +15,13 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @EnableWebSocket
 @Profile("!test")
 public class WebSocketConfig implements WebSocketConfigurer {
-    
+
     private final StreamingWebSocketHandler streamingHandler;
-    
+
     public WebSocketConfig(StreamingWebSocketHandler streamingHandler) {
         this.streamingHandler = streamingHandler;
     }
-    
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(streamingHandler, "/ws/stream")

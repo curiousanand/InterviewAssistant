@@ -22,14 +22,14 @@ public class TestSecurityConfig {
     @Order(1)
     public SecurityFilterChain testFilterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(authz -> authz
-                .anyRequest().permitAll() // Allow all requests in tests
-            )
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for testing
-            .headers(headers -> headers
-                .frameOptions().sameOrigin() // Allow H2 console frames in tests
-            );
-        
+                .authorizeHttpRequests(authz -> authz
+                        .anyRequest().permitAll() // Allow all requests in tests
+                )
+                .csrf(csrf -> csrf.disable()) // Disable CSRF for testing
+                .headers(headers -> headers
+                        .frameOptions().sameOrigin() // Allow H2 console frames in tests
+                );
+
         return http.build();
     }
 }

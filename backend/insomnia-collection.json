@@ -400,7 +400,7 @@
       "dataPropertyOrder": {
         "&": [
           "base_url",
-          "base_host", 
+          "base_host",
           "session_id"
         ]
       },

@@ -8,7 +8,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Mock implementation of IAIService for development and testing
- * 
+ * <p>
  * Why: Enables application startup without external service dependencies
  * Pattern: Mock Object - provides fake implementation for development
  * Rationale: Allows testing of application flow without Azure OpenAI Services
@@ -16,21 +16,21 @@ import java.util.concurrent.CompletableFuture;
 @Service
 @Profile("test")
 public class MockAIService implements IAIService {
-    
+
     @Override
     public CompletableFuture<AIResponse> generateResponse(String sessionId, String userMessage, String language) {
         return CompletableFuture.completedFuture(new MockAIResponse(
-            "Mock AI response to: " + userMessage,
-            150,
-            500.0,
-            "mock-gpt-4",
-            true,
-            null
+                "Mock AI response to: " + userMessage,
+                150,
+                500.0,
+                "mock-gpt-4",
+                true,
+                null
         ));
     }
-    
+
     @Override
-    public CompletableFuture<AIResponse> generateStreamingResponse(String sessionId, String userMessage, 
+    public CompletableFuture<AIResponse> generateStreamingResponse(String sessionId, String userMessage,
                                                                    String language, StreamingCallback callback) {
         // Simulate streaming with mock data
         CompletableFuture.runAsync(() -> {
@@ -41,28 +41,28 @@ public class MockAIService implements IAIService {
                     Thread.sleep(100); // Simulate streaming delay
                 }
                 callback.onComplete(new MockAIResponse(
-                    "Mock streaming AI response to your question",
-                    words.length,
-                    600.0,
-                    "mock-gpt-4",
-                    true,
-                    null
+                        "Mock streaming AI response to your question",
+                        words.length,
+                        600.0,
+                        "mock-gpt-4",
+                        true,
+                        null
                 ));
             } catch (InterruptedException e) {
                 callback.onError("Streaming interrupted: " + e.getMessage());
             }
         });
-        
+
         return CompletableFuture.completedFuture(new MockAIResponse(
-            "Mock streaming AI response to your question",
-            7,
-            600.0,
-            "mock-gpt-4",
-            true,
-            null
+                "Mock streaming AI response to your question",
+                7,
+                600.0,
+                "mock-gpt-4",
+                true,
+                null
         ));
     }
-    
+
     @Override
     public CompletableFuture<Void> generateStreamingResponse(ChatRequest request, StreamingCallback callback) {
         // Simulate streaming with mock data based on conversation context
@@ -70,47 +70,47 @@ public class MockAIService implements IAIService {
             try {
                 String responseText = "Mock AI response to your " + request.getMessageCount() + " messages";
                 String[] words = responseText.split(" ");
-                
+
                 for (String word : words) {
                     callback.onToken(word + " ");
                     Thread.sleep(150); // Simulate realistic streaming delay
                 }
-                
+
                 callback.onComplete(new MockAIResponse(
-                    responseText,
-                    words.length,
-                    800.0,
-                    request.getModel(),
-                    true,
-                    null
+                        responseText,
+                        words.length,
+                        800.0,
+                        request.getModel(),
+                        true,
+                        null
                 ));
             } catch (InterruptedException e) {
                 callback.onError("Mock streaming interrupted: " + e.getMessage());
             }
         });
-        
+
         return CompletableFuture.completedFuture(null);
     }
-    
+
     @Override
     public CompletableFuture<String> summarizeConversation(String sessionId, List<String> messages) {
         return CompletableFuture.completedFuture(
-            "Mock summary of conversation with " + messages.size() + " messages in session " + sessionId
+                "Mock summary of conversation with " + messages.size() + " messages in session " + sessionId
         );
     }
-    
+
     @Override
     public boolean isServiceAvailable() {
         return true;
     }
-    
+
     @Override
     public ServiceConfiguration getConfiguration() {
         return new MockServiceConfiguration();
     }
-    
+
     // Mock implementations of inner interfaces
-    
+
     private static class MockAIResponse implements AIResponse {
         private final String content;
         private final int tokensUsed;
@@ -118,9 +118,9 @@ public class MockAIService implements IAIService {
         private final String model;
         private final boolean success;
         private final String errorMessage;
-        
-        public MockAIResponse(String content, int tokensUsed, double processingTimeMs, 
-                             String model, boolean success, String errorMessage) {
+
+        public MockAIResponse(String content, int tokensUsed, double processingTimeMs,
+                              String model, boolean success, String errorMessage) {
             this.content = content;
             this.tokensUsed = tokensUsed;
             this.processingTimeMs = processingTimeMs;
@@ -128,31 +128,62 @@ public class MockAIService implements IAIService {
             this.success = success;
             this.errorMessage = errorMessage;
         }
-        
+
         @Override
-        public String getContent() { return content; }
+        public String getContent() {
+            return content;
+        }
+
         @Override
-        public int getTokensUsed() { return tokensUsed; }
+        public int getTokensUsed() {
+            return tokensUsed;
+        }
+
         @Override
-        public double getProcessingTimeMs() { return processingTimeMs; }
+        public double getProcessingTimeMs() {
+            return processingTimeMs;
+        }
+
         @Override
-        public String getModel() { return model; }
+        public String getModel() {
+            return model;
+        }
+
         @Override
-        public boolean isSuccess() { return success; }
+        public boolean isSuccess() {
+            return success;
+        }
+
         @Override
-        public String getErrorMessage() { return errorMessage; }
+        public String getErrorMessage() {
+            return errorMessage;
+        }
     }
-    
+
     private static class MockServiceConfiguration implements ServiceConfiguration {
         @Override
-        public String getProviderName() { return "Mock AI Service"; }
+        public String getProviderName() {
+            return "Mock AI Service";
+        }
+
         @Override
-        public String getModel() { return "mock-gpt-4"; }
+        public String getModel() {
+            return "mock-gpt-4";
+        }
+
         @Override
-        public int getMaxTokens() { return 4000; }
+        public int getMaxTokens() {
+            return 4000;
+        }
+
         @Override
-        public double getTemperature() { return 0.7; }
+        public double getTemperature() {
+            return 0.7;
+        }
+
         @Override
-        public String getEndpoint() { return "http://mock-ai-service"; }
+        public String getEndpoint() {
+            return "http://mock-ai-service";
+        }
     }
 }

@@ -1,9 +1,9 @@
 package com.interview.assistant.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.ResponseEntity;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -16,7 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1")
 public class HealthController {
-    
+
     /**
      * Get application status
      */
@@ -27,10 +27,10 @@ public class HealthController {
         status.put("service", "Interview Assistant");
         status.put("version", "1.0.0");
         status.put("timestamp", Instant.now());
-        
+
         return ResponseEntity.ok(status);
     }
-    
+
     /**
      * Get service capabilities
      */
@@ -42,7 +42,7 @@ public class HealthController {
         capabilities.put("aiResponses", true);
         capabilities.put("multiLanguage", true);
         capabilities.put("sessionManagement", true);
-        
+
         return ResponseEntity.ok(capabilities);
     }
 }

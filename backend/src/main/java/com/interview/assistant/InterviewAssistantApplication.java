@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * <p>
  * Why: Bootstraps the application with necessary Spring Boot configurations
  * Pattern: Standard Spring Boot application structure
- * 
+ *
  * @EnableAsync - Enables asynchronous processing for non-blocking operations
  * @EnableScheduling - Enables scheduled tasks for session cleanup and monitoring
  * @ConfigurationPropertiesScan - Scans for @ConfigurationProperties classes
