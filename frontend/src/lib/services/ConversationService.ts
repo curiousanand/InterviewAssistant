@@ -218,6 +218,12 @@ export class ConversationService {
    * Handle WebSocket messages from backend
    */
   private handleWebSocketMessage(message: WebSocketMessage): void {
+    // Validate message before processing
+    if (!message || typeof message !== 'object' || !message.type) {
+      console.warn('ConversationService received invalid message:', message);
+      return;
+    }
+    
     switch (message.type) {
       case WebSocketMessageType.SESSION_READY:
         console.log('Session ready for communication');

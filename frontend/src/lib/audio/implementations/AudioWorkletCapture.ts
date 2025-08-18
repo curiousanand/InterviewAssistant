@@ -424,6 +424,12 @@ export class AudioWorkletCapture implements IAudioCapture {
     try {
       const message = event.data;
 
+      // Validate message before processing
+      if (!message || typeof message !== 'object' || !message.type) {
+        console.warn('AudioWorkletCapture received invalid message:', message);
+        return;
+      }
+
       switch (message.type) {
         case 'audio-data':
           this.handleAudioData(message.data);

@@ -25,7 +25,7 @@ docker-compose up --build
 cd backend && mvn spring-boot:run
 
 # Frontend  
-cd frontend && pnpm dev
+cd frontend && npm run dev
 ```
 
 ### Testing
@@ -34,13 +34,13 @@ cd frontend && pnpm dev
 cd backend && mvn test
 
 # Frontend tests
-cd frontend && pnpm test
+cd frontend && npm test
 
 # Integration tests
 cd backend && mvn test -Dtest=**/*IntegrationTest
 
 # E2E tests
-cd frontend && pnpm test:e2e
+cd frontend && npm run test:e2e
 ```
 
 ### Build and Lint
@@ -49,10 +49,10 @@ cd frontend && pnpm test:e2e
 cd backend && mvn clean package
 
 # Frontend build
-cd frontend && pnpm build
+cd frontend && npm run build
 
 # Frontend lint
-cd frontend && pnpm lint
+cd frontend && npm run lint
 ```
 
 ## Architecture

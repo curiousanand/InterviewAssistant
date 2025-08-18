@@ -38,7 +38,9 @@ export default function InterviewAssistantPage() {
   // Initialize on mount
   useEffect(() => {
     initialize(selectedLanguage, autoDetectLanguage);
-    return cleanup;
+    return () => {
+      cleanup();
+    };
   }, []);
 
   // Handle language change

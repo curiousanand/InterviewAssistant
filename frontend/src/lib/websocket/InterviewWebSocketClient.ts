@@ -228,12 +228,17 @@ export class InterviewWebSocketClient {
       // Handle text messages (JSON)
       if (typeof event.data === 'string') {
         const message: WebSocketMessage = JSON.parse(event.data);
-        this.processMessage(message);
+        // Validate the parsed message before processing
+        if (message && typeof message === 'object' && message.type) {
+          this.processMessage(message);
+        } else {
+          console.warn('Received invalid message format:', message);
+        }
       }
     } catch (error) {
-      console.error('Failed to handle message:', error);
+      console.error('Failed to handle message:', error, 'Raw data:', event.data);
       if (this.onError) {
-        this.onError('Failed to process incoming message');
+        this.onError(`Failed to process incoming message: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }
@@ -280,7 +285,7 @@ export class InterviewWebSocketClient {
         break;
         
       default:
-        console.log('Unknown message type:', message.type);
+        console.log('Unknown message type:', message.type, message);
     }
 
     // Notify listeners
