@@ -1,0 +1,481 @@
+/* Mobile-First Responsive Design */
+
+/* Base styles are mobile-first (already defined in main.css) */
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) {
+  .app-container {
+    padding: var(--spacing-xl);
+  }
+
+  .input-group {
+    align-items: stretch;
+  }
+
+  .task-input {
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  .add-button {
+    padding: var(--spacing-md) var(--spacing-xl);
+    min-width: 100px;
+  }
+
+  .filter-buttons {
+    justify-content: center;
+    gap: var(--spacing-sm);
+  }
+
+  .filter-btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    min-width: 120px;
+  }
+
+  .task-item {
+    padding: var(--spacing-lg);
+  }
+
+  .task-actions {
+    opacity: 0.6;
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+  .app-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: var(--spacing-md);
+  }
+
+  .task-input-section,
+  .filter-section,
+  .task-list-section {
+    padding: var(--spacing-xl);
+  }
+
+  .input-group {
+    gap: var(--spacing-md);
+  }
+
+  .task-input {
+    font-size: var(--font-size-lg);
+    padding: var(--spacing-lg);
+  }
+
+  .add-button {
+    font-size: var(--font-size-lg);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    min-width: 120px;
+  }
+
+  .filter-buttons {
+    gap: var(--spacing-md);
+  }
+
+  .filter-btn {
+    font-size: var(--font-size-base);
+    padding: var(--spacing-md) var(--spacing-xl);
+    min-width: 140px;
+  }
+
+  .task-item {
+    padding: var(--spacing-xl);
+    gap: var(--spacing-lg);
+  }
+
+  .task-text {
+    font-size: var(--font-size-lg);
+  }
+
+  .task-meta {
+    gap: var(--spacing-lg);
+  }
+
+  .task-actions {
+    gap: var(--spacing-sm);
+    opacity: 0;
+  }
+
+  .task-action-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .notification {
+    top: 30px;
+    right: 30px;
+    max-width: 400px;
+  }
+
+  /* Enhanced hover effects for larger screens */
+  .task-item:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .add-button:hover,
+  .filter-btn:hover,
+  .task-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .app-container {
+    max-width: 900px;
+    padding: var(--spacing-xl) var(--spacing-xl);
+  }
+
+  .app-header h1 {
+    font-size: 3rem;
+  }
+
+  .app-main {
+    gap: var(--spacing-xl);
+  }
+
+  /* Side-by-side layout for larger screens */
+  .filter-and-stats {
+    display: flex;
+    gap: var(--spacing-lg);
+    align-items: center;
+  }
+
+  .filter-section {
+    flex: 1;
+    margin-bottom: 0;
+  }
+
+  .task-stats {
+    flex-shrink: 0;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 0;
+  }
+
+  /* Improved task list layout */
+  .task-item {
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-xs);
+    border: 1px solid transparent;
+  }
+
+  .task-item:hover {
+    border-color: var(--border-color);
+    transform: translateX(6px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .task-item:last-child {
+    border-bottom: 1px solid transparent;
+  }
+
+  /* Enhanced typography hierarchy */
+  .task-text {
+    font-size: var(--font-size-xl);
+    line-height: 1.4;
+  }
+
+  .task-meta {
+    font-size: var(--font-size-sm);
+  }
+
+  /* Better action button positioning */
+  .task-actions {
+    position: absolute;
+    right: var(--spacing-md);
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  /* Enhanced empty state */
+  .empty-state {
+    padding: var(--spacing-xl) * 2;
+  }
+
+  .empty-message {
+    font-size: var(--font-size-xl);
+  }
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+  .app-container {
+    max-width: 1000px;
+  }
+
+  .app-header h1 {
+    font-size: 3.5rem;
+    margin-bottom: var(--spacing-lg);
+  }
+
+  /* Enhanced spacing for larger screens */
+  .task-input-section,
+  .filter-section,
+  .task-list-section {
+    padding: var(--spacing-xl) * 1.5;
+  }
+
+  .task-item {
+    padding: var(--spacing-xl) * 1.5;
+  }
+
+  /* Grid layout for filter buttons */
+  .filter-buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-lg);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .filter-btn {
+    min-width: 160px;
+  }
+
+  /* Enhanced notifications */
+  .notification {
+    max-width: 500px;
+    font-size: var(--font-size-lg);
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (orientation: landscape) and (max-height: 600px) {
+  .app-container {
+    padding: var(--spacing-md);
+    min-height: auto;
+  }
+
+  .app-header {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .app-header h1 {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-xs);
+  }
+
+  .app-main {
+    gap: var(--spacing-md);
+  }
+
+  .task-input-section,
+  .filter-section {
+    padding: var(--spacing-md);
+  }
+
+  .task-item {
+    padding: var(--spacing-md);
+  }
+
+  .empty-state,
+  .loading-state,
+  .error-state {
+    padding: var(--spacing-lg);
+  }
+}
+
+/* Print styles */
+@media print {
+  .app-container {
+    max-width: none;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .task-input-section,
+  .filter-section,
+  .bulk-actions,
+  .task-actions {
+    display: none !important;
+  }
+
+  .task-list-section {
+    box-shadow: none;
+    border: none;
+  }
+
+  .task-item {
+    border-bottom: 1px solid #ccc;
+    page-break-inside: avoid;
+    padding: var(--spacing-sm);
+  }
+
+  .task-item:hover {
+    transform: none;
+    background-color: transparent;
+  }
+
+  .task-checkbox {
+    border: 1px solid #000;
+  }
+
+  .task-text {
+    color: #000;
+    font-size: 12pt;
+  }
+
+  .task-meta {
+    color: #666;
+    font-size: 10pt;
+  }
+
+  .notification {
+    display: none !important;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .task-checkbox {
+    width: 24px;
+    height: 24px;
+  }
+
+  .add-button,
+  .filter-btn,
+  .task-action-btn {
+    min-height: 44px;
+    padding: var(--spacing-md);
+  }
+
+  .task-action-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Always show action buttons on touch devices */
+  .task-actions {
+    opacity: 1 !important;
+  }
+
+  /* Remove hover effects that don't work on touch */
+  .task-item:hover,
+  .add-button:hover,
+  .filter-btn:hover,
+  .task-action-btn:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Enhanced focus states for touch navigation */
+  .task-input:focus,
+  .add-button:focus,
+  .filter-btn:focus,
+  .task-action-btn:focus {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+/* High DPI / Retina display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .task-checkbox::after {
+    font-size: 12px;
+  }
+
+  /* Ensure crisp borders on high DPI displays */
+  .task-item,
+  .task-input,
+  .add-button,
+  .filter-btn {
+    border-width: 1px;
+  }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .task-item,
+  .add-button,
+  .filter-btn,
+  .task-action-btn {
+    transition: none;
+  }
+
+  .task-item:hover,
+  .add-button:hover,
+  .filter-btn:hover,
+  .task-action-btn:hover {
+    transform: none;
+  }
+
+  .loading-spinner {
+    animation: none;
+  }
+
+  .skeleton-line {
+    animation: none;
+    background: var(--bg-tertiary);
+  }
+}
+
+/* Container queries for component-level responsiveness (future enhancement) */
+@supports (container-type: inline-size) {
+  .task-list-section {
+    container-type: inline-size;
+  }
+
+  @container (max-width: 400px) {
+    .task-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+    }
+
+    .task-actions {
+      position: static;
+      transform: none;
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+}
+
+/* Custom scrollbar styling for webkit browsers */
+@media (min-width: 768px) {
+  .task-list {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .task-list::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .task-list::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+  }
+
+  .task-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+  }
+
+  .task-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+  }
+}
+
+/* Focus management for keyboard navigation */
+@media (min-width: 768px) {
+  .task-item:focus-within {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+    border-radius: var(--border-radius);
+  }
+
+  .filter-btn:focus-visible,
+  .add-button:focus-visible,
+  .task-action-btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
