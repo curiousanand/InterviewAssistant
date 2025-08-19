@@ -9,7 +9,7 @@ class AudioProcessor extends AudioWorkletProcessor {
     super();
     
     // Configuration from main thread
-    this.bufferSize = options.processorOptions?.bufferSize || 4096;
+    this.bufferSize = options.processorOptions?.bufferSize || 2048;
     this.sampleRate = options.processorOptions?.sampleRate || 16000;
     
     // Internal buffer for accumulating samples
@@ -24,10 +24,13 @@ class AudioProcessor extends AudioWorkletProcessor {
     // Handle commands from main thread
     this.port.onmessage = (event) => {
       const { command } = event.data;
+      console.log('AudioProcessor received command:', command);
       if (command === 'start') {
         this.isStarted = true;
+        console.log('AudioProcessor started processing');
       } else if (command === 'stop') {
         this.isStarted = false;
+        console.log('AudioProcessor stopped processing');
       }
     };
     
@@ -44,6 +47,7 @@ class AudioProcessor extends AudioWorkletProcessor {
     }
     
     const input = inputs[0];
+    const output = outputs[0];
     
     // Handle case where no input is available
     if (!input || !input[0]) {
@@ -51,6 +55,11 @@ class AudioProcessor extends AudioWorkletProcessor {
     }
     
     const inputChannel = input[0]; // First channel (mono)
+    
+    // Pass through audio (required for worklet to keep processing)
+    if (output && output[0]) {
+      output[0].set(inputChannel);
+    }
     
     // Process each sample
     for (let i = 0; i < inputChannel.length; i++) {
@@ -62,6 +71,12 @@ class AudioProcessor extends AudioWorkletProcessor {
         // Calculate RMS energy for VAD
         const energy = this.calculateRMS(this.buffer);
         const hasVoice = energy > this.vadThreshold;
+        
+        // Debug: log every 10th chunk to avoid console spam
+        if (this.chunkCount === undefined) this.chunkCount = 0;
+        if (this.chunkCount++ % 10 === 0) {
+          console.log('AudioProcessor sending chunk:', this.bufferSize, 'samples, energy:', energy.toFixed(4));
+        }
         
         // Send audio data and VAD info to main thread
         this.port.postMessage({

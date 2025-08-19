@@ -222,7 +222,7 @@ export default function ConversationApp() {
     return (
       <LoadingScreen 
         message="Initializing conversation orchestration system..."
-        error={systemStatus.errors.length > 0 ? systemStatus.errors[0].message : null}
+        error={systemStatus.errors.length > 0 ? systemStatus.errors[0]?.message : null}
         onRetry={() => window.location.reload()}
       />
     );

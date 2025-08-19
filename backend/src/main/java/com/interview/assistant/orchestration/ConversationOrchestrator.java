@@ -40,6 +40,9 @@ public class ConversationOrchestrator {
 
     // Session orchestration state
     private final Map<String, SessionOrchestration> sessionOrchestrations = new ConcurrentHashMap<>();
+    
+    // Streaming transcription sessions
+    private final Map<String, ITranscriptionService.StreamingSession> streamingSessions = new ConcurrentHashMap<>();
 
     public ConversationOrchestrator(VoiceActivityDetector voiceActivityDetector,
                                     TranscriptBufferManager transcriptBufferManager,
@@ -53,6 +56,52 @@ public class ConversationOrchestrator {
         this.aiService = aiService;
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
+    }
+
+    /**
+     * Start orchestration session with streaming transcription
+     */
+    public CompletableFuture<Void> startSession(String sessionId, Consumer<OrchestrationEvent> eventCallback) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                logger.info("Starting orchestration session: {}", sessionId);
+                
+                // Create orchestration state
+                SessionOrchestration orchestration = getOrCreateOrchestration(sessionId, eventCallback);
+                
+                // Get session details
+                Session session = sessionRepository.findById(sessionId).orElse(null);
+                if (session == null) {
+                    logger.error("Session not found: {}", sessionId);
+                    throw new RuntimeException("Session not found: " + sessionId);
+                }
+                
+                // Start streaming transcription
+                ITranscriptionService.StreamingTranscriptionCallback callback = 
+                    new StreamingCallbackImpl(sessionId, orchestration);
+                
+                transcriptionService.startStreamingTranscription(
+                    sessionId,
+                    ITranscriptionService.AudioFormat.pcm16k(),
+                    session.getTargetLanguage(),
+                    callback
+                ).thenAccept(streamingSession -> {
+                    streamingSessions.put(sessionId, streamingSession);
+                    logger.info("Streaming transcription session started for: {}", sessionId);
+                }).exceptionally(throwable -> {
+                    logger.error("Failed to start streaming transcription for session: {}", sessionId, throwable);
+                    orchestration.eventCallback.accept(
+                        OrchestrationEvent.error(sessionId, "Failed to start streaming: " + throwable.getMessage())
+                    );
+                    return null;
+                });
+                
+                return null;
+            } catch (Exception e) {
+                logger.error("Failed to start orchestration session: {}", sessionId, e);
+                throw new RuntimeException("Failed to start session", e);
+            }
+        });
     }
 
     /**
@@ -74,8 +123,8 @@ public class ConversationOrchestrator {
                     handleUserInterruption(sessionId, orchestration);
                 }
 
-                // 3. TRANSCRIPTION (always running in parallel)
-                processTranscription(sessionId, audioData, orchestration, vadResult);
+                // 3. STREAMING TRANSCRIPTION (send audio to active stream)
+                processStreamingTranscription(sessionId, audioData, orchestration, vadResult);
 
                 // 4. PAUSE DETECTION & AI TRIGGERING
                 if (vadResult.shouldTriggerAI()) {
@@ -95,49 +144,36 @@ public class ConversationOrchestrator {
     }
 
     /**
-     * Process transcription (always running in parallel)
+     * Process streaming transcription - send audio chunk to active streaming session
      */
-    private void processTranscription(String sessionId, byte[] audioData, 
-                                     SessionOrchestration orchestration,
-                                     VoiceActivityDetector.VoiceActivityResult vadResult) {
-        // Send audio to transcription service
-        Session session = sessionRepository.findById(sessionId).orElse(null);
-        if (session == null) return;
-
-        transcriptionService.transcribe(
-                audioData,
-                ITranscriptionService.AudioFormat.pcm16k(),
-                session.getTargetLanguage()
-        ).thenAccept(result -> {
-            if (result.isSuccess()) {
-                Instant now = Instant.now();
-                
-                if (result.isFinal()) {
-                    // Final transcript - confirm buffer
-                    TranscriptBufferManager.TranscriptSegment segment = 
-                        transcriptBufferManager.confirmBuffer(sessionId, result.getText(), 
-                                                            result.getConfidence(), now);
-                    
-                    orchestration.eventCallback.accept(
-                        OrchestrationEvent.transcriptFinal(sessionId, segment)
-                    );
-                } else {
-                    // Partial transcript - update live buffer
-                    transcriptBufferManager.updateLiveBuffer(sessionId, result.getText(), 
-                                                           result.getConfidence(), now);
-                    
-                    orchestration.eventCallback.accept(
-                        OrchestrationEvent.transcriptPartial(sessionId, result.getText(), result.getConfidence())
-                    );
-                }
-            }
-        }).exceptionally(throwable -> {
-            logger.error("Transcription failed for session {}", sessionId, throwable);
-            orchestration.eventCallback.accept(
-                OrchestrationEvent.error(sessionId, "Transcription failed: " + throwable.getMessage())
-            );
-            return null;
-        });
+    private void processStreamingTranscription(String sessionId, byte[] audioData, 
+                                             SessionOrchestration orchestration,
+                                             VoiceActivityDetector.VoiceActivityResult vadResult) {
+        ITranscriptionService.StreamingSession streamingSession = streamingSessions.get(sessionId);
+        
+        if (streamingSession == null) {
+            // Start streaming session if not exists
+            logger.warn("No streaming session found for {}, starting new session", sessionId);
+            startSession(sessionId, orchestration.eventCallback);
+            return;
+        }
+        
+        if (!streamingSession.isActive()) {
+            logger.warn("Streaming session inactive for {}, restarting", sessionId);
+            streamingSessions.remove(sessionId);
+            startSession(sessionId, orchestration.eventCallback);
+            return;
+        }
+        
+        try {
+            // Send audio chunk to streaming session
+            transcriptionService.sendAudioChunk(streamingSession, audioData).exceptionally(throwable -> {
+                logger.error("Failed to send audio chunk for session {}", sessionId, throwable);
+                return null;
+            });
+        } catch (Exception e) {
+            logger.error("Error sending audio chunk for session {}", sessionId, e);
+        }
     }
 
     /**
@@ -260,18 +296,6 @@ public class ConversationOrchestrator {
         }
     }
 
-    /**
-     * Start session orchestration
-     */
-    public CompletableFuture<Void> startSession(String sessionId, Consumer<OrchestrationEvent> eventCallback) {
-        return CompletableFuture.runAsync(() -> {
-            SessionOrchestration orchestration = new SessionOrchestration(sessionId, eventCallback);
-            sessionOrchestrations.put(sessionId, orchestration);
-            
-            logger.info("Started conversation orchestration for session {}", sessionId);
-            eventCallback.accept(OrchestrationEvent.sessionStarted(sessionId));
-        });
-    }
 
     /**
      * End session orchestration
@@ -397,6 +421,80 @@ public class ConversationOrchestrator {
         public String getErrorMessage() { return errorMessage; }
         public VoiceActivityDetector.VoiceActivityResult getVadResult() { return vadResult; }
         public OrchestrationState getState() { return state; }
+    }
+
+    /**
+     * Streaming transcription callback implementation
+     */
+    private class StreamingCallbackImpl implements ITranscriptionService.StreamingTranscriptionCallback {
+        private final String sessionId;
+        private final SessionOrchestration orchestration;
+
+        public StreamingCallbackImpl(String sessionId, SessionOrchestration orchestration) {
+            this.sessionId = sessionId;
+            this.orchestration = orchestration;
+        }
+
+        @Override
+        public void onPartialResult(ITranscriptionService.TranscriptionResult result) {
+            if (result.isSuccess() && result.getText() != null && !result.getText().trim().isEmpty()) {
+                logger.debug("Partial transcription for session {}: '{}'", sessionId, result.getText());
+                
+                // Update live buffer with partial transcript
+                transcriptBufferManager.updateLiveBuffer(sessionId, result.getText(), result.getConfidence(), Instant.now());
+                
+                // Notify via orchestration event
+                orchestration.eventCallback.accept(
+                    OrchestrationEvent.transcriptPartial(sessionId, result.getText(), result.getConfidence())
+                );
+            }
+        }
+
+        @Override
+        public void onFinalResult(ITranscriptionService.TranscriptionResult result) {
+            if (result.isSuccess() && result.getText() != null) {
+                if (!result.getText().trim().isEmpty()) {
+                    logger.info("Final transcription for session {}: '{}'", sessionId, result.getText());
+                    
+                    // Confirm buffer with final transcript
+                    TranscriptBufferManager.TranscriptSegment segment = 
+                        transcriptBufferManager.confirmBuffer(sessionId, result.getText(), result.getConfidence(), Instant.now());
+                    
+                    // Notify via orchestration event
+                    orchestration.eventCallback.accept(
+                        OrchestrationEvent.transcriptFinal(sessionId, segment)
+                    );
+                } else {
+                    logger.info("Empty transcription result for session {}: sending to frontend for debugging", sessionId);
+                    
+                    // Send empty result to frontend for visibility (with placeholder text)
+                    TranscriptBufferManager.TranscriptSegment emptySegment = 
+                        transcriptBufferManager.confirmBuffer(sessionId, "[silence detected]", result.getConfidence(), Instant.now());
+                    
+                    // Notify via orchestration event with debugging info
+                    orchestration.eventCallback.accept(
+                        OrchestrationEvent.transcriptFinal(sessionId, emptySegment)
+                    );
+                }
+            } else {
+                logger.debug("Unsuccessful final result for session {}: success={}, text='{}'", 
+                           sessionId, result.isSuccess(), result.getText());
+            }
+        }
+
+        @Override
+        public void onError(String error) {
+            logger.error("Transcription error for session {}: {}", sessionId, error);
+            orchestration.eventCallback.accept(
+                OrchestrationEvent.error(sessionId, "Transcription error: " + error)
+            );
+        }
+
+        @Override
+        public void onSessionClosed() {
+            logger.info("Transcription session closed for: {}", sessionId);
+            streamingSessions.remove(sessionId);
+        }
     }
 
     /**

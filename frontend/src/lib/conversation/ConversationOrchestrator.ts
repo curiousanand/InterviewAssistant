@@ -43,6 +43,7 @@ export class ConversationOrchestrator extends EventEmitter {
   private isInitialized = false;
   private isListening = false;
   private isProcessing = false;
+  private chunkCount = 0;
   
   // Performance monitoring
   private performanceMetrics = {
@@ -224,7 +225,15 @@ export class ConversationOrchestrator extends EventEmitter {
    * Handle incoming audio chunks in real-time
    */
   private async handleAudioChunk(audioChunk: Float32Array): Promise<void> {
-    if (!this.isListening) return;
+    if (!this.isListening) {
+      return;
+    }
+    
+    // Log every 10th chunk
+    if (!this.chunkCount) this.chunkCount = 0;
+    if (this.chunkCount++ % 10 === 0) {
+      console.log('📥 Processing audio chunk:', audioChunk.length, 'samples, count:', this.chunkCount);
+    }
     
     try {
       const startTime = performance.now();
@@ -529,9 +538,41 @@ export class ConversationOrchestrator extends EventEmitter {
    * Handle transcript updates from backend
    */
   private handleTranscriptFromBackend(data: any): void {
+    console.log('📝 Received transcript from backend:', {
+      text: data.text,
+      isFinal: data.isFinal,
+      confidence: data.confidence
+    });
+    
     if (data.isFinal) {
+      // Handle final transcript - update both manager and state
       this.transcriptManager.setConfirmedTranscript(data.text, data.confidence);
+      this.updateState({ 
+        confirmedTranscript: data.text,
+        liveTranscript: '' // Clear live transcript when we get final
+      });
+      
+      // Add message to conversation history
+      if (data.text && data.text.trim() && data.text !== '[silence detected]') {
+        const userMessage: ConversationMessage = {
+          id: Date.now().toString() + '-user',
+          role: 'user',
+          content: data.text,
+          timestamp: new Date(),
+          metadata: {
+            confidence: data.confidence || 1.0,
+            processingTime: 0
+          }
+        };
+        
+        this.updateState({
+          messages: [...this.state.messages, userMessage]
+        });
+        
+        console.log('✅ Added final transcript to conversation:', data.text);
+      }
     } else {
+      // Handle live/partial transcript
       this.transcriptManager.setLiveTranscript(data.text, data.confidence);
       this.updateState({ liveTranscript: data.text });
     }

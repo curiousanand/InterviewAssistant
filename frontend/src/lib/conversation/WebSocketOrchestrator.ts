@@ -24,6 +24,15 @@ export class WebSocketOrchestrator extends EventEmitter {
   
   // Message queue for offline messages
   private messageQueue: any[] = [];
+  
+  // Audio chunk counter for logging
+  private audioChunkCount = 0;
+  
+  // Audio batching (deprecated - will be removed when audio source provides 5-second chunks)
+  private audioBatchBuffer: Float32Array[] = [];
+  private batchStartTime = 0;
+  private batchTimer: NodeJS.Timeout | null = null;
+  private readonly BATCH_DURATION_MS = 5000; // 5 seconds
 
   constructor(config: { url: string; apiKey: string }) {
     super();
@@ -55,7 +64,7 @@ export class WebSocketOrchestrator extends EventEmitter {
         // Generate new session ID
         this.sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        // Send session start message
+        // Send session start message (must match backend enum)
         this.sendMessage({
           type: 'SESSION_START',
           sessionId: this.sessionId,
@@ -106,6 +115,12 @@ export class WebSocketOrchestrator extends EventEmitter {
       this.reconnectTimer = null;
     }
 
+    // Clear batch timer (deprecated - will be removed)
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = null;
+    }
+
     if (this.ws && this.isConnected) {
       console.log('🔌 Disconnecting WebSocket...');
       
@@ -124,7 +139,8 @@ export class WebSocketOrchestrator extends EventEmitter {
   }
 
   /**
-   * Send audio chunk to backend
+   * Send 2-second audio chunk to backend in WAV format
+   * Audio chunks are now pre-processed to 2-second segments by RealTimeAudioCapture
    */
   async sendAudioChunk(audioData: Float32Array): Promise<void> {
     if (!this.isConnected || !this.ws) {
@@ -132,22 +148,81 @@ export class WebSocketOrchestrator extends EventEmitter {
       return;
     }
 
+    if (!this.sessionId) {
+      console.warn('Cannot send audio: Session not initialized');
+      return;
+    }
+
     try {
-      // Convert Float32Array to 16-bit PCM
-      const pcmBuffer = new ArrayBuffer(audioData.length * 2);
-      const pcmView = new Int16Array(pcmBuffer);
+      this.audioChunkCount++;
       
-      for (let i = 0; i < audioData.length; i++) {
-        // Convert from [-1, 1] to 16-bit PCM
-        const sample = Math.max(-1, Math.min(1, audioData[i]));
-        pcmView[i] = sample * 0x7FFF;
+      // Calculate audio duration for logging
+      const audioLengthSeconds = (audioData.length / 16000).toFixed(2); // At 16kHz sample rate
+      
+      console.log(`📤 Sending 2-second audio chunk #${this.audioChunkCount}: ${audioData.length} samples (${audioLengthSeconds}s audio)`);
+
+      // Convert to WAV and send directly (no batching needed)
+      const wavBuffer = this.createWAVBuffer(audioData);
+      
+      console.log(`📤 Converted to WAV: ${wavBuffer.byteLength} bytes`);
+      
+      if (this.ws && this.isConnected) {
+        this.ws.send(wavBuffer);
+        console.log(`✅ Audio chunk #${this.audioChunkCount} sent successfully`);
       }
       
-      this.ws.send(pcmBuffer);
     } catch (error) {
       console.error('❌ Failed to send audio chunk:', error);
       this.emit('error', 'Failed to send audio data');
     }
+  }
+
+
+  /**
+   * Create WAV format buffer from Float32Array
+   * WAV format is more compatible with Azure Speech Service streaming
+   */
+  private createWAVBuffer(audioData: Float32Array): ArrayBuffer {
+    const sampleRate = 16000;
+    const channels = 1;
+    const bitsPerSample = 16;
+    const bytesPerSample = bitsPerSample / 8;
+    const blockAlign = channels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = audioData.length * bytesPerSample;
+    const fileSize = 44 + dataSize; // WAV header is 44 bytes
+
+    const buffer = new ArrayBuffer(fileSize);
+    const view = new DataView(buffer);
+    const samples = new Int16Array(buffer, 44, audioData.length);
+
+    // WAV header
+    // RIFF chunk descriptor
+    view.setUint32(0, 0x52494646, false); // "RIFF"
+    view.setUint32(4, fileSize - 8, true); // File size minus RIFF header
+    view.setUint32(8, 0x57415645, false); // "WAVE"
+
+    // fmt sub-chunk
+    view.setUint32(12, 0x666d7420, false); // "fmt "
+    view.setUint32(16, 16, true); // Sub-chunk size (16 for PCM)
+    view.setUint16(20, 1, true); // Audio format (1 for PCM)
+    view.setUint16(22, channels, true); // Number of channels
+    view.setUint32(24, sampleRate, true); // Sample rate
+    view.setUint32(28, byteRate, true); // Byte rate
+    view.setUint16(32, blockAlign, true); // Block align
+    view.setUint16(34, bitsPerSample, true); // Bits per sample
+
+    // data sub-chunk
+    view.setUint32(36, 0x64617461, false); // "data"
+    view.setUint32(40, dataSize, true); // Data size
+
+    // Convert Float32Array to Int16Array (PCM data)
+    for (let i = 0; i < audioData.length; i++) {
+      const sample = Math.max(-1, Math.min(1, audioData[i]));
+      samples[i] = sample * 0x7FFF;
+    }
+
+    return buffer;
   }
 
   /**
@@ -343,6 +418,13 @@ export class WebSocketOrchestrator extends EventEmitter {
    */
   async cleanup(): Promise<void> {
     console.log('🧹 Cleaning up WebSocket orchestrator...');
+    
+    // Clear batch timer (deprecated - will be removed)
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = null;
+    }
+    this.audioBatchBuffer = [];
     
     await this.disconnect();
     this.removeAllListeners();

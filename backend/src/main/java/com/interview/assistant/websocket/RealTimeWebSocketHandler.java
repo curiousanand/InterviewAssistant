@@ -1,7 +1,9 @@
 package com.interview.assistant.websocket;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.interview.assistant.model.Session;
 import com.interview.assistant.orchestration.ConversationOrchestrator;
+import com.interview.assistant.repository.ISessionRepository;
 import com.interview.assistant.service.StreamingAIService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +39,7 @@ public class RealTimeWebSocketHandler implements WebSocketHandler {
     private final WebSocketSessionManager sessionManager;
     private final ValidationHandler validationHandler;
     private final AuthenticationHandler authenticationHandler;
+    private final ISessionRepository sessionRepository;
     private final ObjectMapper objectMapper;
 
     // Session state tracking
@@ -47,11 +50,13 @@ public class RealTimeWebSocketHandler implements WebSocketHandler {
                                    WebSocketSessionManager sessionManager,
                                    ValidationHandler validationHandler,
                                    AuthenticationHandler authenticationHandler,
+                                   ISessionRepository sessionRepository,
                                    ObjectMapper objectMapper) {
         this.conversationOrchestrator = conversationOrchestrator;
         this.sessionManager = sessionManager;
         this.validationHandler = validationHandler;
         this.authenticationHandler = authenticationHandler;
+        this.sessionRepository = sessionRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -226,41 +231,64 @@ public class RealTimeWebSocketHandler implements WebSocketHandler {
         String webSocketSessionId = session.getId();
         String appSessionId = message.getSessionId();
         
-        // Map WebSocket session to application session
-        webSocketToAppSessionMap.put(webSocketSessionId, appSessionId);
+        logger.info("Starting session: {} for WebSocket: {}", appSessionId, webSocketSessionId);
         
-        // Create session state
-        SessionState sessionState = new SessionState(appSessionId, true);
-        sessionStates.put(appSessionId, sessionState);
-        
-        // Start conversation orchestration
-        conversationOrchestrator.startSession(appSessionId, orchestrationEvent -> {
-            try {
-                // Additional session state check for async callbacks
-                if (session.isOpen() && sessionStates.containsKey(appSessionId)) {
-                    handleOrchestrationEvent(session, orchestrationEvent);
-                }
-            } catch (Exception e) {
-                logger.error("Error handling orchestration event during session start", e);
-            }
-        }).thenRun(() -> {
-            logger.info("Started real-time conversation orchestration for session: {} (WebSocket: {})", 
-                       appSessionId, webSocketSessionId);
+        try {
+            // 1. Create database session first
+            Session dbSession = Session.create("en-US", true); // Default to English with auto-detect
+            dbSession.setId(appSessionId); // Use the provided session ID
+            dbSession.setWebSocketSessionId(webSocketSessionId);
+            dbSession.setClientIpAddress(session.getRemoteAddress() != null ? 
+                                       session.getRemoteAddress().toString() : "unknown");
             
+            // Save session to database
+            sessionRepository.save(dbSession);
+            logger.info("Created database session: {}", appSessionId);
+            
+            // 2. Map WebSocket session to application session
+            webSocketToAppSessionMap.put(webSocketSessionId, appSessionId);
+            
+            // 3. Create session state for WebSocket tracking
+            SessionState sessionState = new SessionState(appSessionId, true);
+            sessionStates.put(appSessionId, sessionState);
+            
+            // 4. Start conversation orchestration
+            conversationOrchestrator.startSession(appSessionId, orchestrationEvent -> {
+                try {
+                    // Additional session state check for async callbacks
+                    if (session.isOpen() && sessionStates.containsKey(appSessionId)) {
+                        handleOrchestrationEvent(session, orchestrationEvent);
+                    }
+                } catch (Exception e) {
+                    logger.error("Error handling orchestration event during session start", e);
+                }
+            }).thenRun(() -> {
+                logger.info("Started real-time conversation orchestration for session: {} (WebSocket: {})", 
+                           appSessionId, webSocketSessionId);
+                
+                try {
+                    sendWebSocketMessage(session, "session.ready", Map.of("sessionId", appSessionId));
+                } catch (Exception e) {
+                    logger.error("Error sending session ready message", e);
+                }
+            }).exceptionally(throwable -> {
+                logger.error("Failed to start orchestration for session: {}", appSessionId, throwable);
+                try {
+                    sendErrorMessage(session, "Failed to start session orchestration");
+                } catch (Exception e) {
+                    logger.error("Error sending error message", e);
+                }
+                return null;
+            });
+            
+        } catch (Exception e) {
+            logger.error("Failed to create session: {}", appSessionId, e);
             try {
-                sendWebSocketMessage(session, "session.ready", Map.of("sessionId", appSessionId));
-            } catch (Exception e) {
-                logger.error("Error sending session ready message", e);
+                sendErrorMessage(session, "Failed to create session: " + e.getMessage());
+            } catch (Exception sendError) {
+                logger.error("Error sending error message", sendError);
             }
-        }).exceptionally(throwable -> {
-            logger.error("Failed to start orchestration for session: {}", appSessionId, throwable);
-            try {
-                sendErrorMessage(session, "Failed to start session orchestration");
-            } catch (Exception e) {
-                logger.error("Error sending error message", e);
-            }
-            return null;
-        });
+        }
     }
 
     /**

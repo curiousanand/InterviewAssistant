@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Rationale: Leverages Azure's enterprise-grade speech recognition with streaming support
  */
 @Service
-@Profile("!test")
+@Profile("websocket-speech") // Disabled by default due to WebSocket auth issues
 public class AzureSpeechService implements ITranscriptionService {
 
     private static final Logger logger = LoggerFactory.getLogger(AzureSpeechService.class);
@@ -46,21 +46,17 @@ public class AzureSpeechService implements ITranscriptionService {
     @PostConstruct
     public void initialize() {
         try {
-            // Initialize Azure Speech Config
-            if (speechEndpoint != null && !speechEndpoint.isEmpty()) {
-                logger.info("Initializing Azure Speech Service with custom endpoint: {}", speechEndpoint);
-                speechConfig = SpeechConfig.fromEndpoint(
-                        java.net.URI.create(speechEndpoint),
-                        speechKey
-                );
-            } else {
-                logger.info("Initializing Azure Speech Service with region: {}", speechRegion);
-                speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
-            }
+            // Initialize Azure Speech Config with subscription key and region only
+            // This is the recommended approach for real-time WebSocket connections
+            logger.info("Initializing Azure Speech Service with region: {}", speechRegion);
+            speechConfig = SpeechConfig.fromSubscription(speechKey, speechRegion);
+            
+            // Ensure we're using the standard WebSocket endpoint
+            logger.info("Using standard Azure WebSocket endpoint for region: {}", speechRegion);
 
             // Configure speech settings for optimal real-time performance
             speechConfig.setServiceProperty("punctuation", "explicit", ServicePropertyChannel.UriQueryParameter);
-            speechConfig.setServiceProperty("format", "simple", ServicePropertyChannel.UriQueryParameter);
+            // Note: "format" service property is deprecated, using audio format in recognizer instead
             speechConfig.setServiceProperty("profanity", "masked", ServicePropertyChannel.UriQueryParameter);
 
             // Enable interim results for real-time transcription
@@ -131,33 +127,54 @@ public class AzureSpeechService implements ITranscriptionService {
                                                                            String language, StreamingTranscriptionCallback callback) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                logger.info("Starting streaming transcription for session: {}", sessionId);
+                logger.info("Starting streaming transcription for session: {} with format: {}", sessionId, audioFormat);
 
-                // Create push audio input stream
-                PushAudioInputStream pushStream = PushAudioInputStream.create(
-                        com.microsoft.cognitiveservices.speech.audio.AudioStreamFormat.getWaveFormatPCM(
-                                audioFormat.getSampleRate(),
-                                (short) audioFormat.getBitsPerSample(),
-                                (short) audioFormat.getChannels()
-                        )
-                );
+                // Create push audio input stream with WAV format for better compatibility
+                com.microsoft.cognitiveservices.speech.audio.AudioStreamFormat azureFormat;
+                
+                // Use WAV format which is more compatible with browsers
+                if (audioFormat.getSampleRate() == 16000 && audioFormat.getChannels() == 1 && audioFormat.getBitsPerSample() == 16) {
+                    azureFormat = com.microsoft.cognitiveservices.speech.audio.AudioStreamFormat.getWaveFormatPCM(
+                            16000, // Sample rate
+                            (short) 16, // Bits per sample  
+                            (short) 1   // Channels (mono)
+                    );
+                    logger.info("Using optimized 16kHz mono WAV format for Azure Speech");
+                } else {
+                    // Fallback to provided format
+                    azureFormat = com.microsoft.cognitiveservices.speech.audio.AudioStreamFormat.getWaveFormatPCM(
+                            audioFormat.getSampleRate(),
+                            (short) audioFormat.getBitsPerSample(),
+                            (short) audioFormat.getChannels()
+                    );
+                    logger.warn("Using custom format: {}Hz, {} channels, {} bits", 
+                              audioFormat.getSampleRate(), audioFormat.getChannels(), audioFormat.getBitsPerSample());
+                }
 
+                PushAudioInputStream pushStream = PushAudioInputStream.create(azureFormat);
                 AudioConfig audioConfig = AudioConfig.fromStreamInput(pushStream);
+                
+                // Configure recognizer with optimized settings
                 SpeechRecognizer recognizer = createRecognizer(language, audioConfig);
+                
+                // Enable detailed recognition results
+                recognizer.getProperties().setProperty(PropertyId.SpeechServiceResponse_RequestDetailedResultTrueFalse, "true");
+                recognizer.getProperties().setProperty(PropertyId.SpeechServiceResponse_RequestWordLevelTimestamps, "true");
 
                 // Create streaming session
                 StreamingSessionImpl session = new StreamingSessionImpl(sessionId, recognizer, pushStream, callback);
 
-                // Set up event handlers
-                setupRecognizerEventHandlers(recognizer, callback, session);
+                // Set up event handlers with enhanced logging
+                setupStreamingRecognizerEventHandlers(recognizer, callback, session);
 
                 // Start continuous recognition
+                logger.info("Starting continuous recognition for session: {}", sessionId);
                 recognizer.startContinuousRecognitionAsync().get();
 
                 // Store active session
                 activeSessions.put(sessionId, session);
 
-                logger.info("Streaming transcription started for session: {}", sessionId);
+                logger.info("Streaming transcription successfully started for session: {}", sessionId);
                 return session;
 
             } catch (Exception e) {
@@ -299,34 +316,55 @@ public class AzureSpeechService implements ITranscriptionService {
         return new SpeechRecognizer(config, audioConfig);
     }
 
-    private void setupRecognizerEventHandlers(SpeechRecognizer recognizer, StreamingTranscriptionCallback callback, StreamingSessionImpl session) {
+    private void setupStreamingRecognizerEventHandlers(SpeechRecognizer recognizer, StreamingTranscriptionCallback callback, StreamingSessionImpl session) {
         // Partial results (real-time transcription)
         recognizer.recognizing.addEventListener((s, e) -> {
-            if (session.isActive()) {
-                TranscriptionResult result = createTranscriptionResult(e.getResult(), 0, false);
-                callback.onPartialResult(result);
+            if (session.isActive() && e.getResult() != null) {
+                String text = e.getResult().getText();
+                if (text != null && !text.trim().isEmpty()) {
+                    logger.debug("Partial transcription for session {}: '{}'", session.getSessionId(), text);
+                    TranscriptionResult result = createTranscriptionResult(e.getResult(), 0, false);
+                    callback.onPartialResult(result);
+                } else {
+                    logger.trace("Empty partial result for session: {}", session.getSessionId());
+                }
             }
         });
 
         // Final results
         recognizer.recognized.addEventListener((s, e) -> {
-            if (session.isActive()) {
+            if (session.isActive() && e.getResult() != null) {
+                String text = e.getResult().getText();
+                logger.info("Final transcription for session {}: '{}' (reason: {})", 
+                          session.getSessionId(), text, e.getResult().getReason());
+                
                 TranscriptionResult result = createTranscriptionResult(e.getResult(), 0, true);
                 callback.onFinalResult(result);
             }
         });
 
+        // Session started
+        recognizer.sessionStarted.addEventListener((s, e) -> {
+            logger.info("Azure Speech recognition session started for: {}", session.getSessionId());
+        });
+
         // Error handling
         recognizer.canceled.addEventListener((s, e) -> {
-            logger.warn("Recognition canceled for session: {} - Reason: {}", session.getSessionId(), e.getReason());
+            logger.warn("Recognition canceled for session: {} - Reason: {} - Details: {}", 
+                       session.getSessionId(), e.getReason(), e.getErrorDetails());
+            
             if (e.getReason() == CancellationReason.Error) {
+                logger.error("Azure Speech recognition error for session {}: {}", 
+                           session.getSessionId(), e.getErrorDetails());
                 callback.onError("Recognition error: " + e.getErrorDetails());
+            } else if (e.getReason() == CancellationReason.EndOfStream) {
+                logger.info("Recognition ended due to end of stream for session: {}", session.getSessionId());
             }
         });
 
         // Session events
         recognizer.sessionStopped.addEventListener((s, e) -> {
-            logger.info("Recognition session stopped for: {}", session.getSessionId());
+            logger.info("Azure Speech recognition session stopped for: {}", session.getSessionId());
             callback.onSessionClosed();
         });
     }
